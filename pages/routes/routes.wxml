@@ -1,0 +1,111 @@
+<view class="routes-page">
+  <view class="segment-selector" wx:if="{{segments.length > 0}}">
+    <scroll-view scroll-x class="segment-scroll" enhanced show-scrollbar="{{false}}">
+      <view class="segment-tab {{segIdx === index ? 'active' : ''}}" wx:for="{{segments}}" wx:key="index" bindtap="switchSegment" data-index="{{index}}">
+        <view class="seg-from">{{item.from}}</view>
+        <view class="seg-arrow">→</view>
+        <view class="seg-to">{{item.to}}</view>
+      </view>
+    </scroll-view>
+  </view>
+
+  <view class="route-map-wrap {{fullMap ? 'full' : ''}}">
+    <map id="routeMap" class="route-map" latitude="{{latitude}}" longitude="{{longitude}}" scale="{{scale}}" markers="{{markers}}" polyline="{{polyline}}"></map>
+    <view class="map-float" bindtap="toggleFullMap">{{fullMap ? '收起地图' : '展开地图'}}</view>
+  </view>
+
+  <view class="tab-bar" wx:if="{{!fullMap}}">
+    <view class="tab {{activeTab === 'transit' ? 'active' : ''}}" bindtap="switchTab" data-tab="transit">公交/地铁</view>
+    <view class="tab {{activeTab === 'walking' ? 'active' : ''}}" bindtap="switchTab" data-tab="walking">步行</view>
+  </view>
+
+  <view class="scheme-bar" wx:if="{{activeTab === 'transit' && allTransits.length > 1 && !fullMap}}">
+    <view
+      class="scheme-tab {{transitSchemeIdx === index ? 'active' : ''}}"
+      wx:for="{{allTransits}}"
+      wx:key="index"
+      bindtap="switchTransitScheme"
+      data-index="{{index}}"
+    >
+      <text class="scheme-label">方案{{index + 1}}</text>
+      <text class="scheme-cost" wx:if="{{item.cost > 0}}">¥{{item.cost}}</text>
+    </view>
+  </view>
+
+  <scroll-view scroll-y class="route-content" wx:if="{{!loading && routeData && !fullMap}}">
+    <view class="route-header" wx:if="{{routeData.distance}}">
+      <view class="route-stat">
+        <text class="stat-val">{{routeData.distance}} km</text>
+        <text class="stat-label">全程距离</text>
+      </view>
+      <view class="route-stat" wx:if="{{routeData.duration}}">
+        <text class="stat-val">{{routeData.duration}} 分钟</text>
+        <text class="stat-label">预计用时</text>
+      </view>
+      <view class="route-stat" wx:if="{{routeData.cost > 0}}">
+        <text class="stat-val">¥{{routeData.cost}}</text>
+        <text class="stat-label">预估费用</text>
+      </view>
+    </view>
+
+    <view wx:if="{{activeTab === 'transit' && routeData.steps}}">
+      <view class="route-title">
+        <text class="route-icon">🚌</text>
+        <text>公交/地铁方案 (共 {{routeData.steps.length}} 步)</text>
+      </view>
+
+      <view class="step-list">
+        <view class="step-item {{item.mode === 'TRANSIT' ? 'transit-step' : ''}}" wx:for="{{routeData.steps}}" wx:key="index">
+          <view class="step-line">
+            <view class="step-dot" style="background:{{item.mode === 'TRANSIT' ? (item.lineColor || '#1989fa') : '#1989fa'}}"></view>
+            <view class="step-line-bar" wx:if="{{index < routeData.steps.length - 1}}"></view>
+          </view>
+          <view class="step-body">
+            <view class="step-title">
+              <text wx:if="{{item.transitType}}" class="transit-badge" style="background:{{item.lineColor || '#1989fa'}}">{{item.transitType}}</text>
+              {{item.instruction}}
+            </view>
+            <view class="step-meta" wx:if="{{item.duration || item.stations > 0}}">
+              <text wx:if="{{item.distance && item.mode !== 'TRANSIT'}}">{{item.distance}}m · </text>
+              <text wx:if="{{item.stations > 0}}">{{item.stations}}站</text>
+              <text wx:if="{{item.duration > 0}}"> · {{item.duration}}分钟</text>
+            </view>
+            <view class="step-detail" wx:if="{{item.mode === 'TRANSIT' && item.lineName}}">
+              <view class="transit-line" style="border-left: 4rpx solid {{item.lineColor || '#1989fa'}}" wx:if="{{item.fromStation && item.toStation}}">
+                <text class="line-station">{{item.fromStation}}</text>
+                <text class="line-arrow"> → </text>
+                <text class="line-station">{{item.toStation}}</text>
+              </view>
+              <view class="alt-toggle" wx:if="{{item.altLines.length > 0}}" catchtap="toggleAltLines" data-index="{{index}}">
+                {{item.altExpanded ? '▾ 收起' : '▸ 还有' + item.altLines.length + '条并行线路'}}
+              </view>
+              <view class="alt-list" wx:if="{{item.altExpanded && item.altLines.length > 0}}">
+                <view class="alt-item" wx:for="{{item.altLines}}" wx:key="name" wx:for-item="alt">
+                  <text class="alt-name">{{alt.name}}</text>
+                  <text class="alt-station" wx:if="{{alt.from && alt.to}}">{{alt.from}} → {{alt.to}}</text>
+                </view>
+              </view>
+            </view>
+            <view class="taxi-hint" wx:if="{{item.showTaxi}}" catchtap="onTaxiTap" data-from="{{item.fromName}}" data-to="{{item.toName}}">🚕 建议打车</view>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <view wx:if="{{activeTab === 'walking'}}">
+      <view class="walk-summary">
+        <view class="walk-summary-icon">🚶</view>
+        <view class="walk-summary-text">步行全程约 {{routeData.duration}} 分钟，{{routeData.distance}} 公里</view>
+        <view class="walk-summary-hint">建议在地图查看具体路线</view>
+      </view>
+    </view>
+  </scroll-view>
+
+  <view class="loading-box" wx:if="{{loading}}">
+    <view class="loading-text">正在规划路线</view>
+  </view>
+
+  <view class="empty-box" wx:if="{{!loading && !routeData && points.length >= 2}}">
+    <text>选择上方的路段查看交通方案</text>
+  </view>
+</view>

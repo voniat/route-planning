@@ -1,0 +1,250 @@
+<map
+  id="travelMap"
+  class="map"
+  latitude="{{latitude}}"
+  longitude="{{longitude}}"
+  scale="{{scale}}"
+  markers="{{markers}}"
+  polyline="{{polyline}}"
+  show-location="{{true}}"
+  enable-poi="{{true}}"
+  bindmarkertap="onMarkerTap"
+  bindpoitap="onPOITap"
+  bindtap="onMapTap"
+></map>
+
+<view class="search-bar" wx:if="{{!sorting}}">
+  <view class="city-picker" bindtap="showCityPicker">
+    <view class="city-label">{{cityName}}</view>
+    <view class="city-arrow">▾</view>
+  </view>
+  <view class="search-input-area" bindtap="goSearch">
+    <view class="search-icon-text">🔍</view>
+    <view class="search-placeholder">搜索地点添加途经点</view>
+  </view>
+</view>
+
+<view class="weather-bar" wx:if="{{weatherDays.length > 0}}" bindtouchstart="onWeatherTouchStart" bindtouchend="onWeatherTouchEnd">
+  <view class="weather-row">
+    <view class="weather-nav" catchtap="prevWeatherPage">
+      <text class="weather-nav-arrow">{{weatherPageStart > 0 ? '◂' : ''}}</text>
+    </view>
+    <view
+      class="weather-day {{selectedWeatherDay === index ? 'selected' : ''}}"
+      wx:for="{{weatherDays}}"
+      wx:key="date"
+      wx:if="{{index >= weatherPageStart && index < weatherPageStart + 3}}"
+      catchtap="onWeatherDayTap"
+      data-index="{{index}}"
+    >
+      <text class="weather-day-label">{{item.label}}</text>
+      <text class="weather-day-icon">{{item.icon}}</text>
+      <text class="weather-day-temp">{{item.high}}° {{item.low}}°</text>
+    </view>
+    <view class="weather-nav" catchtap="nextWeatherPage">
+      <text class="weather-nav-arrow">{{weatherPageStart + 3 < weatherDays.length ? '▸' : ''}}</text>
+    </view>
+  </view>
+  <view class="weather-detail" wx:if="{{weatherDays[selectedWeatherDay]}}">
+    <text class="weather-detail-date">{{weatherDays[selectedWeatherDay].date}}</text>
+    <text class="weather-detail-desc">{{weatherDays[selectedWeatherDay].desc || '暂无天气描述'}}</text>
+    <text class="weather-detail-range">最高 {{weatherDays[selectedWeatherDay].high}}° · 最低 {{weatherDays[selectedWeatherDay].low}}°</text>
+  </view>
+</view>
+
+<view class="point-list" style="bottom: {{points.length >= 2 ? '210rpx' : (points.length > 0 ? '120rpx' : '40rpx')}}" wx:if="{{points.length > 0}}">
+  <view class="point-list-header">
+    <text class="point-list-title">途经点 ({{points.length}})</text>
+    <text class="point-list-hint" wx:if="{{!sorting}}">长按拖拽排序 · <text class="optimize-btn" catchtap="optimizeRoute">智能优化</text></text>
+    <text class="point-list-hint sorting" wx:else>拖拽中 松开完成</text>
+  </view>
+  <view
+    class="point-item {{sorting && sortIdx === index ? 'sorting-item' : ''}}"
+    wx:for="{{points}}"
+    wx:key="id"
+    bindtap="focusPoint"
+    data-index="{{index}}"
+  >
+    <view class="drag-handle" bindlongpress="onPointLongPress" data-index="{{index}}">
+      <view class="handle-bars">
+        <view class="bar"></view>
+        <view class="bar"></view>
+        <view class="bar"></view>
+      </view>
+    </view>
+    <view class="point-index {{index === 0 ? 'start' : (index === points.length - 1 ? 'end' : '')}}">
+      {{index === 0 ? '起' : (index === points.length - 1 ? '终' : index)}}
+    </view>
+    <view class="point-name">{{item.title}}</view>
+    <view class="point-time" wx:if="{{pointTimes[index]}}">{{pointTimes[index]}}</view>
+    <view class="point-del" catchtap="removePoint" data-index="{{index}}">✕</view>
+  </view>
+  <view class="point-item time-add-row" wx:if="{{!sorting}}" bindtap="toggleTimePanel">
+    <view class="drag-handle"><view class="handle-bars"><view class="bar"></view><view class="bar"></view><view class="bar"></view></view></view>
+    <view class="point-index" style="background:{{showTimePanel ? '#e64340' : '#1989fa'}}">{{showTimePanel ? '▾' : '＋'}}</view>
+    <view class="point-name" style="color:{{showTimePanel ? '#e64340' : '#1989fa'}}">{{showTimePanel ? '收起时间安排' : '添加时间安排'}}</view>
+  </view>
+  <view class="time-panel" wx:if="{{showTimePanel && !sorting}}">
+    <view class="time-panel-header">
+      <text>全天时段安排</text>
+    </view>
+    <view class="time-row" wx:for="{{points}}" wx:key="id">
+      <view class="time-slot-picker" bindtap="openTimePicker" data-index="{{index}}">
+        <view class="time-slot-val {{pointTimes[index] ? '' : 'empty'}}">
+          {{pointTimes[index] || '--:--'}}
+        </view>
+      </view>
+      <view class="time-dot"></view>
+      <view class="time-info">
+        <view class="time-info-name">{{item.title}}</view>
+        <view class="time-info-tag">{{index === 0 ? '出发' : (index === points.length - 1 ? '到达' : '第' + index + '站')}}</view>
+      </view>
+    </view>
+    <view class="time-auto-row" wx:if="{{points.length > 1}}">
+      <text class="time-auto-btn" bindtap="autoFillTimes">自动填充（一小时一站）</text>
+    </view>
+  </view>
+  <view class="route-time-bar" wx:if="{{routeTimeText && !sorting}}">
+    <text class="route-time-text">{{routeTimeText}}</text>
+  </view>
+</view>
+
+<view class="sort-overlay" wx:if="{{sorting}}" catchtouchmove="onSortMove" catchtouchend="onSortEnd">
+  <view class="sort-ghost point-item" style="top: {{ghostY}}px;">
+    <view class="drag-handle"><view class="handle-bars"><view class="bar"></view><view class="bar"></view><view class="bar"></view></view></view>
+    <view class="point-index">{{ghostLabel}}</view>
+    <view class="point-name">{{ghostTitle}}</view>
+  </view>
+</view>
+
+<view class="toolbar-row" wx:if="{{!sorting}}">
+  <view class="toolbar-btn" bindtap="toggleSavedPanel">
+    <text>⭐ 已收藏 {{savedRoutes.length > 0 ? '(' + savedRoutes.length + ')' : ''}}</text>
+  </view>
+</view>
+
+<view class="saved-panel" wx:if="{{showSavedPanel}}">
+  <view class="saved-mask" bindtap="toggleSavedPanel"></view>
+  <view class="saved-panel-body">
+  <view class="saved-panel-header">
+    <text class="saved-panel-title">已收藏路线</text>
+    <text class="saved-panel-close" bindtap="toggleSavedPanel">✕</text>
+  </view>
+  <view class="saved-empty" wx:if="{{savedRoutes.length === 0}}">
+    <text>暂无收藏。规划好路线后点击底部「收藏路线」保存。</text>
+  </view>
+  <view
+    class="saved-item"
+    wx:for="{{savedRoutes}}"
+    wx:key="id"
+  >
+    <view class="saved-item-info" bindtap="loadRoute" data-id="{{item.id}}">
+      <view class="saved-item-name">{{item.name}}</view>
+      <view class="saved-item-meta">{{item.city}} · {{item.points.length}}个点 · {{item.savedAt}}</view>
+    </view>
+    <view class="saved-item-del" catchtap="deleteSavedRoute" data-id="{{item.id}}">✕</view>
+  </view>
+  </view>
+</view>
+
+<view class="bottom-actions" wx:if="{{points.length >= 2}}">
+  <view class="btn btn-subtle" bindtap="clearAll">清空</view>
+  <view class="btn btn-outline" bindtap="saveRoute">收藏路线</view>
+  <view class="btn btn-primary" bindtap="goRoutes">查看交通路线</view>
+</view>
+
+<view class="bottom-actions" wx:if="{{points.length === 1}}">
+  <view class="btn btn-outline" bindtap="saveRoute">收藏路线</view>
+  <view class="hint">至少添加 2 个地点才能规划路线</view>
+</view>
+
+<view class="time-modal" wx:if="{{editingTimeIdx >= 0}}">
+  <view class="time-modal-mask" catchtap="closeTimePicker"></view>
+  <view class="time-modal-panel">
+    <view class="time-modal-header">
+      <text class="time-modal-cancel" bindtap="closeTimePicker">取消</text>
+      <text class="time-modal-title">选择时间</text>
+      <text class="time-modal-confirm" bindtap="confirmTimePicker">确定</text>
+    </view>
+    <picker-view
+      class="time-picker-view"
+      value="{{timePickValue}}"
+      bindchange="onTimePickChange"
+      indicator-class="time-pick-indicator"
+    >
+      <picker-view-column>
+        <view class="time-pick-item" wx:for="{{hourRange}}" wx:key="*this">{{item}} 时</view>
+      </picker-view-column>
+      <picker-view-column>
+        <view class="time-pick-item" wx:for="{{minuteRange}}" wx:key="*this">{{item}} 分</view>
+      </picker-view-column>
+    </picker-view>
+  </view>
+</view>
+
+<view class="city-modal {{showCityPanel ? 'show' : ''}}">
+  <view class="city-backdrop" bindtap="hideCityPicker"></view>
+  <view class="city-panel">
+    <view class="city-panel-header">
+      <text class="city-panel-cancel" bindtap="hideCityPicker">取消</text>
+      <text class="city-panel-title">选择城市</text>
+      <text class="city-panel-confirm" bindtap="confirmCityPick">确定</text>
+    </view>
+    <picker-view
+      class="city-picker-view"
+      value="{{[pickerProvIdx, pickerCityIdx]}}"
+      bindchange="onCityPickChange"
+      indicator-class="city-picker-indicator"
+    >
+      <picker-view-column>
+        <view class="city-picker-item" wx:for="{{provList}}" wx:key="*this">{{item}}</view>
+      </picker-view-column>
+      <picker-view-column>
+        <view class="city-picker-item" wx:for="{{citySubList}}" wx:key="*this">{{item}}</view>
+      </picker-view-column>
+    </picker-view>
+  </view>
+</view>
+
+<view class="food-panel" wx:if="{{showFoodPanel}}">
+  <view class="food-panel-header">
+    <text class="food-panel-title">附近美食</text>
+    <text class="food-panel-hint">距离+评分加权排序</text>
+    <text class="food-panel-close" bindtap="closeFoodPanel">✕</text>
+  </view>
+  <view class="food-loading" wx:if="{{foodLoading}}">
+    <text>搜索中...</text>
+  </view>
+  <scroll-view scroll-y class="food-list" wx:else>
+    <view class="food-empty" wx:if="{{foodResults.length === 0}}">
+      <text>附近暂无美食推荐</text>
+    </view>
+    <view
+      class="food-item"
+      wx:for="{{foodResults}}"
+      wx:key="name"
+      wx:for-item="food"
+      wx:for-index="fidx"
+    >
+      <view class="food-info">
+        <view class="food-name">{{food.name}}<text class="food-rating-inline" wx:if="{{food.rating > 0}}"> {{food._stars}}</text></view>
+        <view class="food-addr">{{food.address}}<text class="food-dist-inline" wx:if="{{food._distKm}}"> · {{food._distKm}}</text></view>
+      </view>
+      <view class="food-add" bindtap="_addFoodToRoute" data-index="{{fidx}}">＋</view>
+    </view>
+  </scroll-view>
+</view>
+
+<view class="privacy-modal" wx:if="{{showPrivacy}}">
+  <view class="privacy-mask"></view>
+  <view class="privacy-card">
+    <view class="privacy-title">隐私保护指引</view>
+    <view class="privacy-body">
+      <text>感谢您使用旅行路线规划小程序。\n\n为提供地图定位、路线规划和天气查询服务，我们需要获取您的位置信息。\n\n我们不会收集或存储您的个人隐私数据，所有路线数据仅保存在您的设备上。\n\n详情请阅读《隐私保护指引》。</text>
+    </view>
+    <view class="privacy-actions">
+      <view class="privacy-btn cancel" bindtap="disagreePrivacy">不同意</view>
+      <view class="privacy-btn agree" bindtap="agreePrivacy">同意并继续</view>
+    </view>
+  </view>
+</view>

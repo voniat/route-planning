@@ -1,0 +1,20 @@
+{
+  "pages": [
+    "pages/index/index",
+    "pages/search/search",
+    "pages/routes/routes"
+  ],
+  "window": {
+    "navigationBarBackgroundColor": "#ffffff",
+    "navigationBarTitleText": "旅行路线规划",
+    "navigationBarTextStyle": "black",
+    "backgroundColor": "#edf0f5"
+  },
+  "permission": {
+    "scope.userLocation": {
+      "desc": "你的位置信息将用于地图定位和路线规划"
+    }
+  },
+  "requiredPrivateInfos": ["getLocation"],
+  "sitemapLocation": "sitemap.json"
+}
