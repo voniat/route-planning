@@ -54,8 +54,6 @@ Page({
     savedRoutes: [],
     showSavedPanel: false,
     showPrivacy: false,
-    segmentTimes: [],
-    totalRouteTime: 0,
     routeTimeText: '',
     foodResults: [],
     showFoodPanel: false,
@@ -204,7 +202,7 @@ Page({
   renderMap: function() {
     var points = this.data.points
     if (points.length === 0) {
-      this.setData({ markers: [], polyline: null, segmentTimes: [], totalRouteTime: 0, routeTimeText: '' })
+      this.setData({ markers: [], polyline: null, routeTimeText: '' })
       return
     }
 
@@ -226,12 +224,14 @@ Page({
     if (points.length >= 2) {
       this.fetchRoutePolylines(points)
     } else {
-      this.setData({ polyline: null, segmentTimes: [], totalRouteTime: 0, routeTimeText: '' })
+      this.setData({ polyline: null, routeTimeText: '' })
     }
   },
 
   fetchRoutePolylines: function(points) {
     var that = this
+    var fetchId = Date.now()
+    this._routeFetchId = fetchId
     that.setData({ routeTimeText: '计算中...' })
     var city = this.data.cityName || ''
 
@@ -293,6 +293,7 @@ Page({
     }
 
     runBatched(0, []).then(function(results) {
+      if (that._routeFetchId !== fetchId) return
       var allCoords = []
       var segmentTimes = []
       var totalSeconds = 0
@@ -312,7 +313,7 @@ Page({
       var timeText = ''
       if (hours > 0) timeText += hours + '小时 '
       timeText += mins + ' 分钟'
-      that.setData({ segmentTimes: segmentTimes, routeTimeText: '至少约 ' + timeText + ' · ' + segmentTimes.length + ' 个路段' })
+      that.setData({ routeTimeText: '至少约 ' + timeText + ' · ' + segmentTimes.length + ' 个路段' })
       if (allCoords.length > 0) {
         that.setData({
           polyline: [{
@@ -399,7 +400,6 @@ Page({
       itemList: ['查看路线', '搜附近美食', '删除此点'],
       success: function(res) {
         if (res.tapIndex === 0 && that.data.points.length >= 2) {
-          store.set('currentIndex', e.detail.markerId)
           wx.navigateTo({ url: '/pages/routes/routes' })
         } else if (res.tapIndex === 1) {
           that._searchFoodNear(e.detail.markerId)
@@ -428,13 +428,11 @@ Page({
         that._itemH = (ir && ir.height) ? ir.height : 62
       }).exec()
     }
-    wx.createSelectorQuery().select('.point-list').boundingClientRect(function(rect) {
-      that.setData({
-        sorting: true, sortIdx: index,
-        ghostTitle: item.title, ghostLabel: label,
-        ghostY: touch.clientY - 30, sortStartY: touch.clientY
-      })
-    }).exec()
+    this.setData({
+      sorting: true, sortIdx: index,
+      ghostTitle: item.title, ghostLabel: label,
+      ghostY: touch.clientY - 30, sortStartY: touch.clientY
+    })
   },
 
   onSortMove: function(e) {
@@ -598,7 +596,6 @@ Page({
         } else if (res.tapIndex === 1) {
           that._searchFoodNear(idx)
         } else if (res.tapIndex === 2 && that.data.points.length >= 2) {
-          store.set('currentIndex', idx)
           wx.navigateTo({ url: '/pages/routes/routes' })
         }
       }
@@ -652,7 +649,6 @@ Page({
   },
 
   goRoutes: function() {
-    store.set('currentIndex', 0)
     wx.navigateTo({ url: '/pages/routes/routes' })
   },
 
@@ -724,7 +720,7 @@ Page({
       content: '确定要清空所有途经点吗？',
       success: function(res) {
         if (res.confirm) {
-          that.setData({ points: [], markers: [], polyline: null, pointTimes: [], segmentTimes: [], totalRouteTime: 0, routeTimeText: '' })
+          that.setData({ points: [], markers: [], polyline: null, pointTimes: [], routeTimeText: '' })
           store.set('selectedPoints', [])
           if (that.mapCtx) that.mapCtx.moveToLocation()
         }

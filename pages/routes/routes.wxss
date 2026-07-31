@@ -1,5 +1,6 @@
 .routes-page { display: flex; flex-direction: column; height: 100vh; background: #f5f5f5; }
 
+.segment-selector { flex-shrink: 0; }
 .segment-scroll { white-space: nowrap; padding: 16rpx 20rpx; background: #fff; }
 .segment-tab {
   display: inline-flex; flex-direction: column; align-items: center;
@@ -75,9 +76,7 @@
 }
 .step-meta { font-size: 24rpx; color: #999; margin-top: 8rpx; }
 .transit-line { margin-top: 12rpx; padding: 12rpx 16rpx; background: #f0f7ff; border-radius: 8rpx; }
-.line-name { font-weight: 600; color: #1989fa; margin-right: 8rpx; }
-.line-direction { color: #e64340; font-size: 24rpx; display: block; margin-top: 4rpx; }
-.line-from { color: #999; font-size: 22rpx; display: block; margin-top: 4rpx; }
+.step-item.transit-step { }
 .line-station { color: #1989fa; font-size: 28rpx; font-weight: 600; }
 .line-arrow { color: #999; font-size: 24rpx; margin: 0 8rpx; }
 

@@ -1,7 +1,7 @@
 <view class="routes-page">
   <view class="segment-selector" wx:if="{{segments.length > 0}}">
     <scroll-view scroll-x class="segment-scroll" enhanced show-scrollbar="{{false}}">
-      <view class="segment-tab {{segIdx === index ? 'active' : ''}}" wx:for="{{segments}}" wx:key="index" bindtap="switchSegment" data-index="{{index}}">
+      <view class="segment-tab {{segIdx === index ? 'active' : ''}}" wx:for="{{segments}}" wx:key="*this" bindtap="switchSegment" data-index="{{index}}">
         <view class="seg-from">{{item.from}}</view>
         <view class="seg-arrow">→</view>
         <view class="seg-to">{{item.to}}</view>
@@ -23,7 +23,7 @@
     <view
       class="scheme-tab {{transitSchemeIdx === index ? 'active' : ''}}"
       wx:for="{{allTransits}}"
-      wx:key="index"
+      wx:key="*this"
       bindtap="switchTransitScheme"
       data-index="{{index}}"
     >
