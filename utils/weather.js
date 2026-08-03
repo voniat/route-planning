@@ -1,17 +1,3 @@
-function weatherCodeIcon(code) {
-  code = parseInt(code) || 0
-  if (code === 113) return '☀️'
-  if (code === 116) return '⛅'
-  if (code >= 119 && code <= 122) return '☁️'
-  if (code >= 143 && code <= 182) return '🌦'
-  if (code >= 200 && code <= 230) return '⛈'
-  if (code >= 248 && code <= 260) return '🌫'
-  if (code >= 263 && code <= 314) return '🌧'
-  if (code >= 317 && code <= 338) return '🌨'
-  if (code >= 350 && code <= 395) return '🌧'
-  return '🌤'
-}
-
 function getForecastMetro(lat, lng) {
   return new Promise(function(resolve, reject) {
     wx.request({
@@ -56,4 +42,4 @@ function getForecastMetro(lat, lng) {
   })
 }
 
-module.exports = { getForecastMetro: getForecastMetro, weatherCodeIcon: weatherCodeIcon }
+module.exports = { getForecastMetro: getForecastMetro }

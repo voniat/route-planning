@@ -1,7 +1,6 @@
 var store = require('../../utils/store')
 var common = require('../../utils/common')
 var favoriteService = require('../../utils/favorite-service')
-var routeService = require('../../utils/route-service')
 var gaode = require('../../utils/gaode')
 var cities = require('../../utils/cities')
 var weather = require('../../utils/weather')
@@ -27,7 +26,6 @@ Page({
     markers: [],
     polyline: null,
     points: [],
-    mapCtx: null,
     provList: [],
     citySubList: [],
     provIdx: 1,
@@ -269,7 +267,7 @@ Page({
     var city = this.data.cityName || ''
 
     function segmentPromise(origin, dest) {
-      return routeService.transitRoute(origin, dest, city).then(function(data) {
+      return gaode.transitRoute(origin, dest, city).then(function(data) {
         var route = data.route
         var coords = []
         var duration = 0
@@ -285,7 +283,7 @@ Page({
           segs.forEach(function(seg) {
             if (seg.walking && seg.walking.steps) {
               seg.walking.steps.forEach(function(step) {
-                if (step.polyline) coords = coords.concat(routeService.decodePolyline(step.polyline))
+                if (step.polyline) coords = coords.concat(gaode.decodePolyline(step.polyline))
               })
             }
             if (seg.bus && seg.bus.buslines && seg.bus.buslines.length > 0) {
@@ -295,7 +293,7 @@ Page({
                   fl = seg.bus.buslines[b]; break
                 }
               }
-              if (fl) coords = coords.concat(routeService.decodePolyline(fl.polyline))
+              if (fl) coords = coords.concat(gaode.decodePolyline(fl.polyline))
             }
           })
         }

@@ -1,5 +1,5 @@
 var store = require('../../utils/store')
-var routeService = require('../../utils/route-service')
+var gaode = require('../../utils/gaode')
 
 var LINE_COLORS = [
   '#e64340', '#1989fa', '#9c27b0', '#ff4081', '#009688'
@@ -22,8 +22,6 @@ function buildLineColorMap(segments) {
 }
 
 Page({
-  _routeCache: null,
-
   data: {
     points: [],
     segments: [],
@@ -112,7 +110,7 @@ Page({
     var dest = { lng: seg.toLng, lat: seg.toLat }
     var that = this
     this.setData({ loading: true, routeData: null })
-    routeService.transitRoute(origin, dest, store.get('currentCity') || '').then(function(data) {
+    gaode.transitRoute(origin, dest, store.get('currentCity') || '').then(function(data) {
       that.setData({ loading: false })
       var route = data.route
       if (!route || !route.transits || !route.transits[idx]) {
@@ -172,9 +170,9 @@ Page({
 
     var promise
     switch (tab) {
-      case 'transit': promise = routeService.transitRoute(origin, dest, store.get('currentCity') || ''); break
-      case 'walking': promise = routeService.walkingRoute(origin, dest); break
-      default: promise = routeService.transitRoute(origin, dest, store.get('currentCity') || '')
+      case 'transit': promise = gaode.transitRoute(origin, dest, store.get('currentCity') || ''); break
+      case 'walking': promise = gaode.walkingRoute(origin, dest); break
+      default: promise = gaode.transitRoute(origin, dest, store.get('currentCity') || '')
     }
 
     var that = this
@@ -242,7 +240,7 @@ Page({
       } else if (route.steps) {
         var walkPoints = []
         route.steps.forEach(function(step) {
-          if (step.polyline) walkPoints = walkPoints.concat(routeService.decodePolyline(step.polyline))
+          if (step.polyline) walkPoints = walkPoints.concat(gaode.decodePolyline(step.polyline))
         })
         if (walkPoints.length > 0) {
           polylines.push({ points: walkPoints, color: WALK_COLOR, width: 4, arrowLine: true })
@@ -299,7 +297,7 @@ Page({
       if (s.walking && s.walking.steps) {
         var walkPoints = []
         s.walking.steps.forEach(function(step) {
-          if (step.polyline) walkPoints = walkPoints.concat(routeService.decodePolyline(step.polyline))
+          if (step.polyline) walkPoints = walkPoints.concat(gaode.decodePolyline(step.polyline))
         })
         if (walkPoints.length > 0) {
           polylines.push({ points: walkPoints, color: WALK_COLOR, width: 4, arrowLine: true, dottedLine: true })
@@ -308,7 +306,7 @@ Page({
       if (s.bus && s.bus.buslines && s.bus.buslines.length > 0) {
         var fl = s.bus.buslines[0]
         if (fl && fl.polyline) {
-          var busPoints = routeService.decodePolyline(fl.polyline)
+          var busPoints = gaode.decodePolyline(fl.polyline)
           if (busPoints.length > 0) {
             var lc = lineColorMap[fl.name] || '#1989fa'
             polylines.push({ points: busPoints, color: lc, width: 5, arrowLine: true, borderColor: '#ffffff', borderWidth: 2 })

@@ -76,7 +76,6 @@
 }
 .step-meta { font-size: 24rpx; color: #999; margin-top: 8rpx; }
 .transit-line { margin-top: 12rpx; padding: 12rpx 16rpx; background: #f0f7ff; border-radius: 8rpx; }
-.step-item.transit-step { }
 .line-station { color: #1989fa; font-size: 28rpx; font-weight: 600; }
 .line-arrow { color: #999; font-size: 24rpx; margin: 0 8rpx; }
 
