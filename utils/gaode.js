@@ -55,10 +55,6 @@ function poiDetail(id) {
   return callGaode('poi_detail', { id: id })
 }
 
-function weather(city, extensions) {
-  return callGaode('weather', { city: city, extensions: extensions || 'all' })
-}
-
 function inputTips(keywords) {
   return callGaode('input_tips', { keywords: keywords })
 }
@@ -98,7 +94,6 @@ module.exports = {
   poiSearch: poiSearch,
   poiAround: poiAround,
   poiDetail: poiDetail,
-  weather: weather,
   inputTips: inputTips,
   walkingRoute: walkingRoute,
   transitRoute: transitRoute,

@@ -3,16 +3,6 @@ var common = require('../../utils/common')
 var favoriteService = require('../../utils/favorite-service')
 var gaode = require('../../utils/gaode')
 var cities = require('../../utils/cities')
-var weather = require('../../utils/weather')
-
-function fetchCityWeatherFn(ctx) {
-  var city = ctx.data.cityName
-  if (!city || city === '全国') return
-  weather.getForecast(city).then(function(days) {
-    if (ctx.data.cityName !== city) return
-    ctx.setData({ weatherDays: days, selectedWeatherDay: 0, weatherPageStart: 0 })
-  }).catch(function(e) { console.error('[weather forecast]', e) })
-}
 
 function parseBounds(bounds) {
   if (!bounds || typeof bounds !== 'string') return null
@@ -65,9 +55,6 @@ Page({
     ghostLabel: '',
     ghostY: 0,
     sortStartY: 0,
-    weatherDays: [],
-    selectedWeatherDay: 0,
-    weatherPageStart: 0,
     showTimePanel: false,
     pointTimes: [],
     editingTimeIdx: -1,
@@ -166,21 +153,17 @@ Page({
                 if (provCities[j].indexOf(city) !== -1 || city.indexOf(provCities[j]) !== -1) {
                   that.setData({ provIdx: i, citySubIdx: j, cityName: provCities[j], citySubList: cities.PROVINCE_DATA[i].cities })
                   store.set('currentCity', provCities[j])
-                  fetchCityWeatherFn(that)
                   return
                 }
               }
             }
           }
-          fetchCityWeatherFn(that)
         }).catch(function(e) {
           console.error('[getLocation regeocode]', e)
-          fetchCityWeatherFn(that)
         })
       },
       fail: function(e) {
         console.error('[getLocation]', e)
-        fetchCityWeatherFn(that)
       }
     })
   },
@@ -220,38 +203,11 @@ Page({
           if (provCities[j].indexOf(city) !== -1 || city.indexOf(provCities[j]) !== -1) {
             that.setData({ provIdx: i, citySubIdx: j, cityName: provCities[j], citySubList: cities.PROVINCE_DATA[i].cities })
             store.set('currentCity', provCities[j])
-            fetchCityWeatherFn(that)
             return
           }
         }
       }
     }).catch(function(e) { console.error('[regeocode city]', e) })
-  },
-
-  onWeatherDayTap: function(e) {
-    var idx = parseInt(e.currentTarget.dataset.index)
-    this.setData({ selectedWeatherDay: idx })
-  },
-
-  prevWeatherPage: function() {
-    var s = this.data.weatherPageStart
-    if (s >= 3) this.setData({ weatherPageStart: s - 3 })
-  },
-
-  nextWeatherPage: function() {
-    var s = this.data.weatherPageStart
-    var max = this.data.weatherDays.length - 3
-    if (s < max) this.setData({ weatherPageStart: s + 3 })
-  },
-
-  onWeatherTouchStart: function(e) {
-    this._weatherTouchX = e.touches[0].clientX
-  },
-
-  onWeatherTouchEnd: function(e) {
-    var dx = e.changedTouches[0].clientX - (this._weatherTouchX || 0)
-    if (dx < -50) this.nextWeatherPage()
-    else if (dx > 50) this.prevWeatherPage()
   },
 
   renderMap: function() {
@@ -726,7 +682,6 @@ Page({
       scale: isNational ? 4 : 11, showCityPanel: false
     })
     store.set('currentCity', isNational ? '' : cityName)
-    fetchCityWeatherFn(this)
   },
 
   goRoutes: function() {
