@@ -6,6 +6,15 @@ var LINE_COLORS = [
 ]
 var WALK_COLOR = '#1989fa'
 
+function buildAllTransits(transits) {
+  return (transits || []).map(function(t) {
+    var c = t.cost
+    if (c === undefined || c === null || c === '') c = null
+    else c = Number(c)
+    return { cost: c, distance: t.distance, duration: t.duration }
+  })
+}
+
 function buildLineColorMap(segments) {
   var colorMap = {}
   var names = []
@@ -118,6 +127,7 @@ Page({
         return
       }
       var transit = route.transits[idx]
+      that.setData({ allTransits: buildAllTransits(route.transits) })
       transit.segments.forEach(function(s) { s._from = seg.from; s._to = seg.to })
       var lineColorMap = buildLineColorMap(transit.segments)
       var steps = that.parseTransitSteps(transit, lineColorMap)
@@ -199,7 +209,7 @@ Page({
 
       var routeData = {}
       if (tab === 'transit' && route.transits) {
-        var allTransits = route.transits.map(function(t) { return { cost: t.cost || 0, distance: t.distance, duration: t.duration } })
+        var allTransits = buildAllTransits(route.transits)
         var transit = route.transits[0]
         transit.segments.forEach(function(s) {
           s._from = seg.from

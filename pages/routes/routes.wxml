@@ -28,7 +28,7 @@
       data-index="{{index}}"
     >
       <text class="scheme-label">方案{{index + 1}}</text>
-      <text class="scheme-cost" wx:if="{{item.cost > 0}}">¥{{item.cost}}</text>
+      <text class="scheme-cost" wx:if="{{item.cost !== null}}">¥{{item.cost}}</text>
     </view>
   </view>
 

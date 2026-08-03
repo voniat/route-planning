@@ -67,7 +67,7 @@
       </view>
       <view class="result-info">
         <view class="result-title">{{item.title}}<text wx:if="{{item.added}}" class="added-tag">（已添加）</text></view>
-        <view class="result-addr">{{item.address}}<text wx:if="{{item._distStr}}" class="dist-tag">{{item._distStr}}</text></view>
+        <view class="result-addr">{{item.address}}<text wx:if="{{item._distStr}}" class="dist-tag">{{item._distStr}}</text><text wx:if="{{item.bounds}}" class="area-tag">区域范围</text></view>
       </view>
       <view class="result-action">
         <text class="action-add">+</text>

@@ -6,6 +6,7 @@
   scale="{{scale}}"
   markers="{{markers}}"
   polyline="{{polyline}}"
+  polygons="{{polygons}}"
   show-location="{{true}}"
   enable-poi="{{true}}"
   bindmarkertap="onMarkerTap"

@@ -43,6 +43,7 @@ function cleanResults(rawList, added) {
       address: item.address || item.addr || '',
       latitude: lat,
       longitude: lng,
+      bounds: item.bounds || '',
       added: added.some(function(p) {
         return Math.abs(p.latitude - lat) < 0.0001 && Math.abs(p.longitude - lng) < 0.0001
       })
@@ -168,7 +169,8 @@ Page({
       title: item.title,
       latitude: item.latitude,
       longitude: item.longitude,
-      address: item.address
+      address: item.address,
+      bounds: item.bounds || ''
     })
     store.set('selectedPoints', points)
     var obj = {}

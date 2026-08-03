@@ -16,6 +16,32 @@ function fetchCityWeatherFn(ctx) {
   }).catch(function(e) { console.error('[weather forecast]', e) })
 }
 
+function parseBounds(bounds) {
+  if (!bounds || typeof bounds !== 'string') return null
+  var out = []
+  var pts = bounds.split(';')
+  for (var i = 0; i < pts.length; i++) {
+    var parts = pts[i].split(',')
+    var lng = parseFloat(parts[0])
+    var lat = parseFloat(parts[1])
+    if (!isNaN(lng) && !isNaN(lat)) out.push({ longitude: lng, latitude: lat })
+  }
+  if (out.length < 2) return null
+  var minLng = Infinity, minLat = Infinity, maxLng = -Infinity, maxLat = -Infinity
+  out.forEach(function(p) {
+    if (p.longitude < minLng) minLng = p.longitude
+    if (p.latitude < minLat) minLat = p.latitude
+    if (p.longitude > maxLng) maxLng = p.longitude
+    if (p.latitude > maxLat) maxLat = p.latitude
+  })
+  return [
+    { longitude: minLng, latitude: minLat },
+    { longitude: maxLng, latitude: minLat },
+    { longitude: maxLng, latitude: maxLat },
+    { longitude: minLng, latitude: maxLat }
+  ]
+}
+
 var MAX_POINTS = 20
 
 Page({
@@ -25,6 +51,7 @@ Page({
     scale: 12,
     markers: [],
     polyline: null,
+    polygons: [],
     points: [],
     provList: [],
     citySubList: [],
@@ -231,7 +258,7 @@ Page({
   renderMap: function() {
     var points = this.data.points
     if (points.length === 0) {
-      this.setData({ markers: [], polyline: null, routeTimeText: '' })
+      this.setData({ markers: [], polyline: null, routeTimeText: '', polygons: [] })
       return
     }
 
@@ -250,7 +277,20 @@ Page({
       }
     })
 
-    this.setData({ markers: markers })
+    var polygons = []
+    points.forEach(function(p) {
+      var rect = parseBounds(p.bounds)
+      if (rect) {
+        polygons.push({
+          points: rect,
+          fillColor: '#1989fa26',
+          strokeColor: '#1989fa',
+          strokeWidth: 2
+        })
+      }
+    })
+
+    this.setData({ markers: markers, polygons: polygons })
 
     if (points.length >= 2) {
       this.fetchRoutePolylines(points)
@@ -774,7 +814,7 @@ Page({
       content: '确定要清空所有途经点吗？',
       success: function(res) {
         if (res.confirm) {
-          that.setData({ points: [], markers: [], polyline: null, pointTimes: [], routeTimeText: '' })
+          that.setData({ points: [], markers: [], polyline: null, polygons: [], pointTimes: [], routeTimeText: '' })
           store.set('selectedPoints', [])
           if (that.mapCtx) that.mapCtx.moveToLocation()
         }
