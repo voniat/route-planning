@@ -33,6 +33,7 @@
     >
       <text class="history-icon">🕐</text>
       <text class="history-text">{{item}}</text>
+      <text class="history-del" catchtap="deleteHistoryItem" data-index="{{index}}">✕</text>
     </view>
   </view>
 

@@ -137,6 +137,15 @@ Page({
     try { wx.setStorageSync('search_history', []) } catch (e) {}
   },
 
+  deleteHistoryItem: function(e) {
+    var idx = parseInt(e.currentTarget.dataset.index)
+    var history = this.data.history.slice()
+    if (idx < 0 || idx >= history.length) return
+    history.splice(idx, 1)
+    this.setData({ history: history })
+    try { wx.setStorageSync('search_history', history) } catch (e) {}
+  },
+
   selectResult: function(e) {
     if (this._selecting) return
     var id = e.currentTarget.dataset.id

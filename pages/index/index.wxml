@@ -1,6 +1,6 @@
 <map
   id="travelMap"
-  class="map"
+  class="map {{mapHidden ? 'hidden' : ''}}"
   latitude="{{latitude}}"
   longitude="{{longitude}}"
   scale="{{scale}}"
@@ -118,6 +118,9 @@
 </view>
 
 <view class="toolbar-row" wx:if="{{!sorting}}">
+  <view class="toolbar-btn" bindtap="toggleMap">
+    <text>{{mapHidden ? '🗺 显示地图' : '🕶 隐藏地图'}}</text>
+  </view>
   <view class="toolbar-btn" bindtap="toggleSavedPanel">
     <text>⭐ 已收藏 {{savedRoutes.length > 0 ? '(' + savedRoutes.length + ')' : ''}}</text>
   </view>

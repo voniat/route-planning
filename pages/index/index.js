@@ -57,7 +57,8 @@ Page({
     routeTimeText: '',
     foodResults: [],
     showFoodPanel: false,
-    foodLoading: false
+    foodLoading: false,
+    mapHidden: false
   },
 
   onLoad: function(options) {
@@ -307,10 +308,10 @@ Page({
 
     runBatched(0, []).then(function(results) {
       if (that._routeFetchId !== fetchId) return
-      var allCoords = []
       var segmentTimes = []
       var totalSeconds = 0
       var anySuccess = false
+      var allCoords = []
       results.forEach(function(r) {
         if (r.coords.length > 0) anySuccess = true
         allCoords = allCoords.concat(r.coords)
@@ -327,17 +328,26 @@ Page({
       if (hours > 0) timeText += hours + '小时 '
       timeText += mins + ' 分钟'
       that.setData({ routeTimeText: '至少约 ' + timeText + ' · ' + segmentTimes.length + ' 个路段' })
-      if (allCoords.length > 0) {
-        that.setData({
-          polyline: [{
-            points: allCoords,
-            color: '#e64340', width: 4, arrowLine: true,
+      var SEG_COLORS = ['#e64340', '#1989fa', '#07c160', '#9c27b0', '#ff8833', '#00bcd4', '#ff4081', '#795548']
+      var polylines = []
+      results.forEach(function(r, segIdx) {
+        if (r.coords.length > 0) {
+          polylines.push({
+            points: r.coords,
+            color: SEG_COLORS[segIdx % SEG_COLORS.length],
+            width: 4, arrowLine: true,
             borderColor: '#ffffff', borderWidth: 2
-          }]
-        })
-      } else {
-        that.setData({ polyline: null })
+          })
+        }
+      })
+      if (polylines.length === 0) {
+        polylines = [{
+          points: allCoords,
+          color: '#e64340', width: 4, arrowLine: true,
+          borderColor: '#ffffff', borderWidth: 2
+        }]
       }
+      that.setData({ polyline: polylines })
     })
   },
 
@@ -712,6 +722,10 @@ Page({
 
   toggleSavedPanel: function() {
     this.setData({ showSavedPanel: !this.data.showSavedPanel })
+  },
+
+  toggleMap: function() {
+    this.setData({ mapHidden: !this.data.mapHidden })
   },
 
   onShareAppMessage: function() {
