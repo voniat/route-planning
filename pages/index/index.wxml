@@ -125,6 +125,9 @@
   <view class="toolbar-btn" bindtap="toggleSavedPanel">
     <text>⭐ 已收藏 {{savedRoutes.length > 0 ? '(' + savedRoutes.length + ')' : ''}}</text>
   </view>
+  <view class="toolbar-btn" bindtap="drawShareCard">
+    <text>📷 行程卡片</text>
+  </view>
 </view>
 
 <view class="saved-panel" wx:if="{{showSavedPanel}}">
@@ -255,3 +258,5 @@
     </view>
   </view>
 </view>
+
+<canvas canvas-id="shareCanvas" class="share-canvas" style="height: {{shareCanvasH}}px;"></canvas>

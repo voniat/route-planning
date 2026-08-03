@@ -37,6 +37,11 @@ function cleanResults(rawList, added) {
     var key = lat.toFixed(5) + ',' + lng.toFixed(5)
     if (seen[key]) return
     seen[key] = true
+    var photoUrl = ''
+    var photos = item.photos || []
+    if (photos.length > 0 && photos[0] && photos[0].url) {
+      photoUrl = photos[0].url.replace('http://', 'https://')
+    }
     results.push({
       id: item.id || 'poi-' + i,
       title: item.name || item.title || '',
@@ -45,6 +50,7 @@ function cleanResults(rawList, added) {
       longitude: lng,
       bounds: item.bounds || '',
       typecode: item.typecode || '',
+      photo: photoUrl,
       added: added.some(function(p) {
         return Math.abs(p.latitude - lat) < 0.0001 && Math.abs(p.longitude - lng) < 0.0001
       })
@@ -146,6 +152,21 @@ Page({
     history.splice(idx, 1)
     this.setData({ history: history })
     try { wx.setStorageSync('search_history', history) } catch (e) {}
+  },
+
+  onPhotoError: function(e) {
+    var idx = parseInt(e.currentTarget.dataset.index)
+    if (idx >= 0 && idx < this.data.results.length) {
+      var obj = {}
+      obj['results[' + idx + '].photo'] = ''
+      this.setData(obj)
+    }
+  },
+
+  previewPhoto: function(e) {
+    var url = e.currentTarget.dataset.url
+    if (!url) return
+    wx.previewImage({ urls: [url] })
   },
 
   selectResult: function(e) {

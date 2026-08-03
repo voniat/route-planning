@@ -62,7 +62,18 @@
       data-id="{{item.id}}"
     >
       <view class="result-icon">
-        <text wx:if="{{item.added}}">✅</text>
+        <image
+          wx:if="{{item.photo}}"
+          class="result-photo"
+          src="{{item.photo}}"
+          mode="aspectFill"
+          lazy-load="{{true}}"
+          binderror="onPhotoError"
+          data-index="{{index}}"
+          catchtap="previewPhoto"
+          data-url="{{item.photo}}"
+        ></image>
+        <text wx:elif="{{item.added}}">✅</text>
         <text wx:else>📍</text>
       </view>
       <view class="result-info">
