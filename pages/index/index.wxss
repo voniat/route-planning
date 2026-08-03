@@ -1,6 +1,5 @@
 page { height: 100%; background: #edf0f5; }
 .map { width: 100%; height: 100%; }
-.map.hidden { display: none; }
 
 .search-bar {
   position: fixed; top: 20rpx; left: 20rpx; right: 20rpx; z-index: 10;

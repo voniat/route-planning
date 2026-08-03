@@ -1,6 +1,6 @@
 <map
   id="travelMap"
-  class="map {{mapHidden ? 'hidden' : ''}}"
+  class="map"
   latitude="{{latitude}}"
   longitude="{{longitude}}"
   scale="{{scale}}"
@@ -52,7 +52,7 @@
   </view>
 </view>
 
-<view class="point-list" style="bottom: {{points.length >= 2 ? '210rpx' : (points.length > 0 ? '120rpx' : '40rpx')}}" wx:if="{{points.length > 0}}">
+<view class="point-list" style="bottom: {{points.length >= 2 ? '210rpx' : (points.length > 0 ? '120rpx' : '40rpx')}}" wx:if="{{points.length > 0 && !pointsHidden}}">
   <view class="point-list-header">
     <text class="point-list-title">途经点 ({{points.length}})</text>
     <text class="point-list-hint" wx:if="{{!sorting}}">长按拖拽排序 · <text class="optimize-btn" catchtap="optimizeRoute">智能优化</text></text>
@@ -118,8 +118,8 @@
 </view>
 
 <view class="toolbar-row" wx:if="{{!sorting}}">
-  <view class="toolbar-btn" bindtap="toggleMap">
-    <text>{{mapHidden ? '🗺 显示地图' : '🕶 隐藏地图'}}</text>
+  <view class="toolbar-btn" bindtap="togglePoints">
+    <text>{{pointsHidden ? '📋 显示途径点' : '📋 隐藏途径点'}}</text>
   </view>
   <view class="toolbar-btn" bindtap="toggleSavedPanel">
     <text>⭐ 已收藏 {{savedRoutes.length > 0 ? '(' + savedRoutes.length + ')' : ''}}</text>

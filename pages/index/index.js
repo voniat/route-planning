@@ -58,7 +58,7 @@ Page({
     foodResults: [],
     showFoodPanel: false,
     foodLoading: false,
-    mapHidden: false
+    pointsHidden: false
   },
 
   onLoad: function(options) {
@@ -724,8 +724,8 @@ Page({
     this.setData({ showSavedPanel: !this.data.showSavedPanel })
   },
 
-  toggleMap: function() {
-    this.setData({ mapHidden: !this.data.mapHidden })
+  togglePoints: function() {
+    this.setData({ pointsHidden: !this.data.pointsHidden })
   },
 
   onShareAppMessage: function() {
