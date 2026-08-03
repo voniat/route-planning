@@ -8,7 +8,7 @@
     "navigationBarBackgroundColor": "#ffffff",
     "navigationBarTitleText": "旅行路线规划",
     "navigationBarTextStyle": "black",
-    "backgroundColor": "#edf0f5"
+    "backgroundColor": "#f2f4f8"
   },
   "permission": {
     "scope.userLocation": {

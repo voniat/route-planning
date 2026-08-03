@@ -61,7 +61,10 @@ Page({
     history: []
   },
 
-  onLoad: function() {
+  onLoad: function(options) {
+    if (options && options.city && !store.get('currentCity')) {
+      store.set('currentCity', decodeURIComponent(options.city))
+    }
     try {
       var h = wx.getStorageSync('search_history') || []
       this.setData({ history: Array.isArray(h) ? h : [] })

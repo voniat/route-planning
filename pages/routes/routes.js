@@ -123,12 +123,22 @@ Page({
       transit.segments.forEach(function(s) { s._from = seg.from; s._to = seg.to })
       var lineColorMap = buildLineColorMap(transit.segments)
       var steps = that.parseTransitSteps(transit, lineColorMap)
+      var polylines = that.buildTransitPolylines(transit, lineColorMap)
       that.setData({
         routeData: {
           steps: steps,
           distance: (parseFloat(transit.distance || 0) / 1000).toFixed(1),
           duration: Math.round(parseFloat(transit.duration || 0) / 60),
           cost: transit.cost || 0
+        },
+        polyline: polylines
+      }, function() {
+        var allPts = [{ latitude: seg.fromLat, longitude: seg.fromLng }, { latitude: seg.toLat, longitude: seg.toLng }]
+        polylines.forEach(function(pl) {
+          if (pl.points && pl.points.length) allPts = allPts.concat(pl.points)
+        })
+        if (that.routeMapCtx) {
+          that.routeMapCtx.includePoints({ points: allPts, padding: [40, 40, 40, 40] })
         }
       })
     }).catch(function(err) {
@@ -168,7 +178,10 @@ Page({
     }
 
     var that = this
+    var fetchId = Date.now()
+    this._routeFetchId = fetchId
     promise.then(function(data) {
+      if (that._routeFetchId !== fetchId) return
       that.setData({ loading: false })
 
       var route
@@ -179,8 +192,10 @@ Page({
         route = path
       }
 
-      if (!route || (!route.transits && !route.steps && !route.distance)) {
+      if (!route || (tab === 'transit' && (!route.transits || route.transits.length === 0)) ||
+          (tab !== 'transit' && !route.steps && !route.distance)) {
         wx.showToast({ title: '未找到路线', icon: 'none' })
+        that.setData({ routeData: null })
         return
       }
 
@@ -223,29 +238,7 @@ Page({
 
       var polylines = []
       if (tab === 'transit' && route.transits) {
-        var transit = route.transits[0]
-        var segs = transit.segments || []
-        segs.forEach(function(s) {
-          if (s.walking && s.walking.steps) {
-            var walkPoints = []
-            s.walking.steps.forEach(function(step) {
-              if (step.polyline) walkPoints = walkPoints.concat(routeService.decodePolyline(step.polyline))
-            })
-            if (walkPoints.length > 0) {
-              polylines.push({ points: walkPoints, color: WALK_COLOR, width: 4, arrowLine: true, dottedLine: true })
-            }
-          }
-          if (s.bus && s.bus.buslines && s.bus.buslines.length > 0) {
-            var fl = s.bus.buslines[0]
-            if (fl && fl.polyline) {
-              var busPoints = routeService.decodePolyline(fl.polyline)
-              if (busPoints.length > 0) {
-                var lc = lineColorMap[fl.name] || '#1989fa'
-                polylines.push({ points: busPoints, color: lc, width: 5, arrowLine: true, borderColor: '#ffffff', borderWidth: 2 })
-              }
-            }
-          }
-        })
+        polylines = that.buildTransitPolylines(route.transits[0], lineColorMap)
       } else if (route.steps) {
         var walkPoints = []
         route.steps.forEach(function(step) {
@@ -282,7 +275,8 @@ Page({
         that._routeCache[cacheKey] = {
           routeData: routeData,
           latitude: center.latitude, longitude: center.longitude,
-          markers: markers, polyline: polylines
+          markers: markers, polyline: polylines,
+          allTransits: that.data.allTransits, transitSchemeIdx: that.data.transitSchemeIdx
         }
         var allPts = [{ latitude: seg.fromLat, longitude: seg.fromLng }, { latitude: seg.toLat, longitude: seg.toLng }]
         polylines.forEach(function(pl) {
@@ -296,6 +290,33 @@ Page({
       that.setData({ loading: false })
       wx.showToast({ title: err.message || '路线规划失败', icon: 'none' })
     })
+  },
+
+  buildTransitPolylines: function(transit, lineColorMap) {
+    var polylines = []
+    var segs = transit.segments || []
+    segs.forEach(function(s) {
+      if (s.walking && s.walking.steps) {
+        var walkPoints = []
+        s.walking.steps.forEach(function(step) {
+          if (step.polyline) walkPoints = walkPoints.concat(routeService.decodePolyline(step.polyline))
+        })
+        if (walkPoints.length > 0) {
+          polylines.push({ points: walkPoints, color: WALK_COLOR, width: 4, arrowLine: true, dottedLine: true })
+        }
+      }
+      if (s.bus && s.bus.buslines && s.bus.buslines.length > 0) {
+        var fl = s.bus.buslines[0]
+        if (fl && fl.polyline) {
+          var busPoints = routeService.decodePolyline(fl.polyline)
+          if (busPoints.length > 0) {
+            var lc = lineColorMap[fl.name] || '#1989fa'
+            polylines.push({ points: busPoints, color: lc, width: 5, arrowLine: true, borderColor: '#ffffff', borderWidth: 2 })
+          }
+        }
+      }
+    })
+    return polylines
   },
 
   parseTransitSteps: function(transit, lineColorMap) {

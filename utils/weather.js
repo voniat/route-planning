@@ -43,8 +43,8 @@ function getForecastMetro(lat, lng) {
                      parseInt(daily.weathercode[i]) <= 82 ? '🌧' :
                      parseInt(daily.weathercode[i]) <= 86 ? '🌨' :
                      parseInt(daily.weathercode[i]) >= 95 ? '⛈' : '🌤'),
-              high: String(daily.temperature_2m_max[i] || ''),
-              low: String(daily.temperature_2m_min[i] || ''),
+              high: String(daily.temperature_2m_max[i] === undefined || daily.temperature_2m_max[i] === null ? '' : daily.temperature_2m_max[i]),
+              low: String(daily.temperature_2m_min[i] === undefined || daily.temperature_2m_min[i] === null ? '' : daily.temperature_2m_min[i]),
               desc: ''
             }
           })

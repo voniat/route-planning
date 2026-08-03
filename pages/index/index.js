@@ -81,7 +81,12 @@ Page({
             return pt && typeof pt.latitude === 'number' && typeof pt.longitude === 'number' &&
               pt.latitude >= -90 && pt.latitude <= 90 && pt.longitude >= -180 && pt.longitude <= 180
           })
-          if (valid) store.set('selectedPoints', d.p)
+          if (valid) {
+            store.set('selectedPoints', d.p)
+            if (Array.isArray(d.t)) {
+              this._sharedTimes = d.t
+            }
+          }
         }
       } catch (e) { console.error('[share parse]', e) }
     }
@@ -139,7 +144,13 @@ Page({
   loadPoints: function() {
     var points = store.get('selectedPoints') || []
     this.setData({ points: points })
-    var times = this.data.pointTimes
+    var times
+    if (this._sharedTimes && this._sharedTimes.length) {
+      times = this._sharedTimes.slice()
+      this._sharedTimes = null
+    } else {
+      times = this.data.pointTimes
+    }
     while (times.length < points.length) times.push('')
     if (times.length > points.length) times = times.slice(0, points.length)
     this.setData({ pointTimes: times })
@@ -206,7 +217,9 @@ Page({
       return
     }
 
-    var markers = points.filter(function(p) { return p && p.latitude && p.longitude }).map(function(p, i) {
+    var markers = points.filter(function(p) {
+      return p && typeof p.latitude === 'number' && typeof p.longitude === 'number'
+    }).map(function(p, i) {
       var isStart = i === 0
       var isEnd = i === points.length - 1 && points.length > 1
       var callout = {}
@@ -305,7 +318,7 @@ Page({
         totalSeconds += r.duration
       })
       if (!anySuccess) {
-        that.setData({ routeTimeText: '路线计算失败，请重试' })
+        that.setData({ routeTimeText: '路线计算失败，请重试', polyline: null })
         return
       }
       var hours = Math.floor(totalSeconds / 3600)
@@ -564,9 +577,11 @@ Page({
       if (!times[i]) {
         var th = h, tm = m
         if (tm >= 60) { th += 1; tm -= 60 }
+        th = th % 24
         times[i] = (th < 10 ? '0' : '') + th + ':' + (tm < 10 ? '0' : '') + tm
       }
       h += 1
+      if (h >= 24) h = h % 24
     }
     this.setData({ pointTimes: times })
   },
