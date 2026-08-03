@@ -72,18 +72,30 @@ Page({
     var citySubList = cities.PROVINCE_DATA[1].cities
     this.setData({ provList: provList, citySubList: citySubList })
     this.getUserLocation()
-    fetchCityWeatherFn(this)
     this.loadSavedRoutes()
     if (options && options.share) {
       try {
         var d = JSON.parse(decodeURIComponent(options.share))
         if (d && d.p && Array.isArray(d.p) && d.p.length > 0 && d.p.length <= MAX_POINTS) {
           var valid = d.p.every(function(pt) {
-            return pt && typeof pt.latitude === 'number' && typeof pt.longitude === 'number' &&
-              pt.latitude >= -90 && pt.latitude <= 90 && pt.longitude >= -180 && pt.longitude <= 180
+            var lat, lng
+            if (Array.isArray(pt)) {
+              if (pt.length < 3) return false
+              lat = pt[1]; lng = pt[2]
+            } else {
+              if (!pt) return false
+              lat = pt.latitude; lng = pt.longitude
+            }
+            return typeof lat === 'number' && typeof lng === 'number' &&
+              lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180
           })
           if (valid) {
-            store.set('selectedPoints', d.p)
+            store.set('selectedPoints', d.p.map(function(pt) {
+              if (Array.isArray(pt)) {
+                return { title: String(pt[0] || ''), latitude: pt[1], longitude: pt[2] }
+              }
+              return { title: pt.title || '', latitude: pt.latitude, longitude: pt.longitude }
+            }))
             if (Array.isArray(d.t)) {
               this._sharedTimes = d.t
             }
@@ -136,9 +148,16 @@ Page({
               }
             }
           }
+          fetchCityWeatherFn(that)
+        }).catch(function(e) {
+          console.error('[getLocation regeocode]', e)
+          fetchCityWeatherFn(that)
         })
       },
-      fail: function(e) { console.error('[getLocation]', e) }
+      fail: function(e) {
+        console.error('[getLocation]', e)
+        fetchCityWeatherFn(that)
+      }
     })
   },
 
@@ -733,8 +752,16 @@ Page({
     var title = points.length > 0 ? (points[0].title + ' → ' + points[points.length - 1].title) : '旅行规划'
     var path = '/pages/index/index'
     if (points.length > 0) {
-      var d = JSON.stringify({ p: points, t: this.data.pointTimes })
-      if (d.length < 800) path += '?share=' + encodeURIComponent(d)
+      var payload = {
+        p: points.map(function(pt) {
+          var t = pt.title || ''
+          if (t.length > 8) t = t.slice(0, 8)
+          return [t, Math.round(pt.latitude * 1e5) / 1e5, Math.round(pt.longitude * 1e5) / 1e5]
+        }),
+        t: this.data.pointTimes
+      }
+      var share = encodeURIComponent(JSON.stringify(payload))
+      if (share.length < 2200) path += '?share=' + share
     }
     return {
       title: title + ' · ' + points.length + '个地点',

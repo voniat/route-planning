@@ -10,7 +10,7 @@
   enable-poi="{{true}}"
   bindmarkertap="onMarkerTap"
   bindpoitap="onPOITap"
-  bindtap="onMapTap"
+  bindlongtap="onMapTap"
 ></map>
 
 <view class="search-bar" wx:if="{{!sorting}}">
