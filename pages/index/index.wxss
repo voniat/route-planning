@@ -134,7 +134,7 @@ page { height: 100%; background: #edf0f5; }
 }
 
 .toolbar-row {
-  position: fixed; top: 300rpx; right: 24rpx; z-index: 10;
+  position: fixed; top: 112rpx; left: 20rpx; z-index: 10;
   display: flex; gap: 12rpx;
 }
 .toolbar-btn {
