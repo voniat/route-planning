@@ -8,9 +8,7 @@ var weather = require('../../utils/weather')
 function fetchCityWeatherFn(ctx) {
   var city = ctx.data.cityName
   if (!city || city === '全国') return
-  var coords = cities.CITY_COORDS[city]
-  if (!coords) return
-  weather.getForecastMetro(coords.lat, coords.lng).then(function(days) {
+  weather.getForecast(city).then(function(days) {
     if (ctx.data.cityName !== city) return
     ctx.setData({ weatherDays: days, selectedWeatherDay: 0, weatherPageStart: 0 })
   }).catch(function(e) { console.error('[weather forecast]', e) })
