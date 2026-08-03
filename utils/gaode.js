@@ -51,6 +51,10 @@ function poiAround(lng, lat, keywords, radius) {
   })
 }
 
+function poiDetail(id) {
+  return callGaode('poi_detail', { id: id })
+}
+
 function inputTips(keywords) {
   return callGaode('input_tips', { keywords: keywords })
 }
@@ -89,6 +93,7 @@ module.exports = {
   regeocode: regeocode,
   poiSearch: poiSearch,
   poiAround: poiAround,
+  poiDetail: poiDetail,
   inputTips: inputTips,
   walkingRoute: walkingRoute,
   transitRoute: transitRoute,

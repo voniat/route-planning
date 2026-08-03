@@ -44,6 +44,7 @@ function cleanResults(rawList, added) {
       latitude: lat,
       longitude: lng,
       bounds: item.bounds || '',
+      typecode: item.typecode || '',
       added: added.some(function(p) {
         return Math.abs(p.latitude - lat) < 0.0001 && Math.abs(p.longitude - lng) < 0.0001
       })
@@ -170,14 +171,38 @@ Page({
       latitude: item.latitude,
       longitude: item.longitude,
       address: item.address,
-      bounds: item.bounds || ''
+      bounds: item.bounds || '',
+      typecode: item.typecode || ''
     })
     store.set('selectedPoints', points)
     var obj = {}
     obj['results[' + idx + '].added'] = true
     this.setData(obj)
     wx.showToast({ title: '已添加到路线', icon: 'success' })
+    this._fetchBounds(item, idx)
     setTimeout(function() { wx.navigateBack() }, 800)
+  },
+
+  _fetchBounds: function(item, idx) {
+    if (item.bounds) return
+    if (String(item.typecode || '').indexOf('11') !== 0) return
+    var that = this
+    gaode.poiDetail(item.id).then(function(data) {
+      var pois = data.pois || []
+      var detail = pois[0] || {}
+      if (!detail.bounds) return
+      var obj = {}
+      obj['results[' + idx + '].bounds'] = detail.bounds
+      that.setData(obj)
+      var points = (store.get('selectedPoints') || []).slice()
+      for (var i = 0; i < points.length; i++) {
+        if (points[i].id === item.id && !points[i].bounds) {
+          points[i].bounds = detail.bounds
+          break
+        }
+      }
+      store.set('selectedPoints', points)
+    }).catch(function(e) { console.error('[poi detail]', e) })
   },
 
   clearKeyword: function() {
