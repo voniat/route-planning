@@ -340,7 +340,11 @@ Page({
       if (hours > 0) timeText += hours + '小时 '
       timeText += mins + ' 分钟'
       that.setData({ routeTimeText: '至少约 ' + timeText + ' · ' + segmentTimes.length + ' 个路段' })
-      var SEG_COLORS = ['#e64340', '#1989fa', '#07c160', '#9c27b0', '#ff8833', '#00bcd4', '#ff4081', '#795548']
+      var SEG_COLORS = [
+        '#e64340', '#1989fa', '#ff8833', '#07c160',
+        '#e040fb', '#00bcd4', '#ffab00', '#536dfe',
+        '#d50000', '#009688', '#ff6d00', '#7c4dff'
+      ]
       var polylines = []
       results.forEach(function(r, segIdx) {
         if (r.coords.length > 0) {
