@@ -151,6 +151,13 @@ function _nearestNeighbor(pts) {
 
 // ── Page ──
 
+function _saveMsgs(msgs) {
+  var plain = msgs.map(function(m) {
+    return { role: m.role, content: m.content, actionTags: m.actionTags, loading: m.loading }
+  })
+  store.set('agentMsgs', plain)
+}
+
 Page({
   data: {
     messages: [],
@@ -160,12 +167,20 @@ Page({
   },
 
   onLoad: function() {
+    var saved = store.get('agentMsgs')
+    if (saved && saved.length > 0) {
+      var msgs = saved.map(function(m) { return _msg(m.role, m.content, { actionTags: m.actionTags, loading: m.loading }) })
+      this.setData({ messages: msgs })
+      return
+    }
     var ctx = _buildContext()
     var pnames = (ctx.points || []).map(function(p, i) { return (i + 1) + '. ' + (p.title || '?') }).join('\n')
     var welcome = '你好！我是 Taffy，你的旅行规划助手~'
     if (pnames) welcome += '\n\n当前路线:\n' + pnames + '\n'
     welcome += '\n\n可以让我帮你：添加地点、删除站点、重新排序、搜索美食、查看路线，直接说就好~'
-    this.setData({ messages: [_msg('assistant', welcome)] })
+    var initMsgs = [_msg('assistant', welcome)]
+    this.setData({ messages: initMsgs })
+    _saveMsgs(initMsgs)
   },
 
   onShow: function() {
@@ -247,11 +262,13 @@ Page({
           _execActions(actions, that)
         }
         that.setData({ messages: msgs.slice(0, -1).concat([finalMsg]), sending: false })
+        _saveMsgs(msgs.slice(0, -1).concat([finalMsg]))
       },
       fail: function(err) {
         clearInterval(timer)
         var finalMsgs = msgs.slice(0, -1).concat([_msg('assistant', '请求失败: ' + (err.errMsg || '网络错误'))])
         that.setData({ messages: finalMsgs, sending: false })
+        _saveMsgs(finalMsgs)
       }
     })
   },
