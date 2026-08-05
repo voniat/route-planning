@@ -161,9 +161,9 @@ Page({
 
   onLoad: function() {
     var ctx = _buildContext()
-    var pnames = (ctx.points || []).map(function(p) { return p.title || '?' }).join(' → ')
+    var pnames = (ctx.points || []).map(function(p, i) { return (i + 1) + '. ' + (p.title || '?') }).join('\n')
     var welcome = '你好！我是 Taffy，你的旅行规划助手~'
-    if (pnames) welcome += '\n\n当前路线: ' + pnames + '\n在「' + (ctx.city || '北京') + '」'
+    if (pnames) welcome += '\n\n当前路线:\n' + pnames + '\n'
     welcome += '\n\n可以让我帮你：添加地点、删除站点、重新排序、搜索美食、查看路线，直接说就好~'
     this.setData({ messages: [_msg('assistant', welcome)] })
   },
