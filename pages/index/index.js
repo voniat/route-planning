@@ -755,9 +755,20 @@ Page({
   saveRoute: function() {
     var points = this.data.points
     if (points.length === 0) { wx.showToast({ title: '请先添加途经点', icon: 'none' }); return }
-    favoriteService.add(points, this.data.pointTimes, this.data.cityName)
-    this.setData({ savedRoutes: favoriteService.list() })
-    wx.showToast({ title: '已收藏', icon: 'success' })
+    var defName = (points[0] && points[0].title ? points[0].title : '') + ' 等' + points.length + '站'
+    var that = this
+    wx.showModal({
+      title: '收藏路线',
+      editable: true,
+      placeholderText: defName,
+      success: function(res) {
+        if (!res.confirm) return
+        var name = (res.content || '').trim() || defName
+        favoriteService.add(points, that.data.pointTimes, that.data.cityName, name)
+        that.setData({ savedRoutes: favoriteService.list() })
+        wx.showToast({ title: '已收藏「' + name + '」', icon: 'success' })
+      }
+    })
   },
 
   loadRoute: function(e) {
