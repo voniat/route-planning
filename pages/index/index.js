@@ -347,15 +347,16 @@ Page({
           polylines.push({
             points: r.coords,
             color: SEG_COLORS[segIdx % SEG_COLORS.length],
-            width: 4, arrowLine: true,
-            borderColor: '#ffffff', borderWidth: 2
+            width: 5, arrowLine: true,
+            borderColor: '#ffffff', borderWidth: 2,
+            dottedLine: segIdx % 2 === 1
           })
         }
       })
       if (polylines.length === 0) {
         polylines = [{
           points: allCoords,
-          color: '#e64340', width: 4, arrowLine: true,
+          color: '#e64340', width: 5, arrowLine: true,
           borderColor: '#ffffff', borderWidth: 2
         }]
       }
