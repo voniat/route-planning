@@ -1,10 +1,21 @@
 var store = require('../../utils/store')
 var common = require('../../utils/common')
 var gaode = require('../../utils/gaode')
+var cities = require('../../utils/cities')
 var MAX_POINTS = 20
 
+function detectCity(kw) {
+  var all = []
+  cities.PROVINCE_DATA.forEach(function(p) { all = all.concat(p.cities) })
+  var sorted = all.filter(function(c) { return c !== '全国' }).sort(function(a, b) { return b.length - a.length })
+  for (var i = 0; i < sorted.length; i++) {
+    if (kw.indexOf(sorted[i]) >= 0) return sorted[i]
+  }
+  return ''
+}
+
 function doSearchRequest(ctx, kw) {
-  var city = store.get('currentCity') || ''
+  var city = detectCity(kw) || (store.get('currentCity') || '')
   gaode.poiSearch(kw, city).then(function(data) {
     wx.hideLoading()
     var added = store.get('selectedPoints') || []

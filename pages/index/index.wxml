@@ -214,6 +214,10 @@
   </scroll-view>
 </view>
 
+<view class="ai-button" bindtap="goAgent">
+  <text class="ai-button-icon">AI</text>
+</view>
+
 <view class="privacy-modal" wx:if="{{showPrivacy}}">
   <view class="privacy-mask"></view>
   <view class="privacy-card">

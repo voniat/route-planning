@@ -646,6 +646,11 @@ Page({
     wx.navigateTo({ url: '/pages/search/search?centerLat=' + lat + '&centerLng=' + lng + '&city=' + encodeURIComponent(city) })
   },
 
+  goAgent: function() {
+    var city = this.data.cityName || '北京'
+    wx.navigateTo({ url: '/pages/agent/agent?city=' + encodeURIComponent(city) })
+  },
+
   showCityPicker: function() {
     this.setData({
       showCityPanel: true,

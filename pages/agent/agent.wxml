@@ -1,0 +1,29 @@
+<!-- pages/agent/agent.wxml -->
+<view class="container">
+  <scroll-view class="chat-list" scroll-y scroll-into-view="msg-{{messages.length - 1}}">
+    <block wx:for="{{messages}}" wx:key="index">
+      <view class="msg {{item.role}}" id="msg-{{index}}">
+        <view class="avatar {{item.role}}">
+          {{item.role === 'user' ? '我' : 'AI'}}
+        </view>
+        <view class="bubble {{item.role}}">
+          <text wx:if="{{item.loading}}" class="loading-text">{{item.content}}</text>
+          <text wx:else>{{item.content}}</text>
+        </view>
+      </view>
+    </block>
+  </scroll-view>
+
+  <view class="input-bar">
+    <input
+      class="chat-input"
+      value="{{input}}"
+      placeholder="问路线、查天气、搜美食..."
+      bindinput="onInput"
+      bindconfirm="send"
+      confirm-type="send"
+      disabled="{{sending}}"
+    />
+    <button class="send-btn" size="mini" bindtap="send" disabled="{{sending || !input}}">发送</button>
+  </view>
+</view>
