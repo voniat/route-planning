@@ -112,10 +112,12 @@ function _execActions(actions, that) {
         })(a.id, a.name)
         break
       case 'saveCurrent':
-        run.push(function() {
-          var cur = store.get('selectedPoints') || []
-          if (cur.length > 0) { fav.add(cur, [], store.get('currentCity') || ''); wx.showToast({ title: '已收藏', icon: 'success' }) }
-        })
+        (function(name) {
+          run.push(function() {
+            var cur = store.get('selectedPoints') || []
+            if (cur.length > 0) { fav.add(cur, [], store.get('currentCity') || '', name || ''); wx.showToast({ title: name ? '已收藏「' + name + '」' : '已收藏', icon: 'success' }) }
+          })
+        })(a.name)
         break
     }
   })

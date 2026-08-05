@@ -32,7 +32,7 @@ function save(routes) {
   }
 }
 
-function add(points, times, cityName) {
+function add(points, times, cityName, customName) {
   if (!points || points.length === 0) return null
   var routes = list()
   if (routes.length >= MAX_ROUTES) {
@@ -41,7 +41,7 @@ function add(points, times, cityName) {
   }
   var route = {
     id: Date.now(),
-    name: points[0].title + ' 等' + points.length + '站',
+    name: customName || (points[0].title + ' 等' + points.length + '站'),
     city: cityName || '',
     points: points.slice(),
     times: (times || []).slice(),
