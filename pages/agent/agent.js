@@ -51,7 +51,7 @@ Page({
   },
 
   _apiUrl() {
-    const dev = wx.getStorageSync('agent_dev_url') || 'https://service.example.com/api/chat'
+    const dev = wx.getStorageSync('agent_dev_url') || 'http://127.0.0.1:5520/api/chat'
     return dev
   }
 })
