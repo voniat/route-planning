@@ -188,15 +188,36 @@ Page({
     var msgs = this.data.messages.concat([_msg('user', text)])
     this.setData({ messages: msgs, input: '', sending: true, actionResult: null })
 
-    var loadingMsg = _msg('assistant', '思考中...', { loading: true })
-    this.setData({ messages: msgs.concat([loadingMsg]) })
+    var startTime = Date.now()
+    var placeholder = _msg('assistant', '▌', { loading: true })
+    msgs = msgs.concat([placeholder])
+    this.setData({ messages: msgs })
 
     var ctx = _buildContext()
     var that = this
+    var buffer = ''
+    var chunkTimer = null
 
-    wx.request({
-      url: this._apiUrl(),
+    var reqUrl = (this._apiUrl()).replace(/\/api\/chat$/, '/api/chat/stream')
+
+    function _updateDisplay(text, done) {
+      var elapsed = Math.floor((Date.now() - startTime) / 1000)
+      var dots = '.'; for (var d = 0; d < (elapsed % 3) + 1; d++) dots += '.'
+      var display = text || ('▌ ' + dots + ' ' + elapsed + 's')
+      var last = msgs[msgs.length - 1]
+      last.content = display
+      last.lines = display.split('\n')
+      last.loading = !done
+      that.setData({ messages: msgs.slice() })
+    }
+
+    // 心跳：未收到数据时做动画
+    chunkTimer = setInterval(function() { if (!buffer) _updateDisplay('', false) }, 1000)
+
+    var task = wx.request({
+      url: reqUrl,
       method: 'POST',
+      enableChunked: true,
       data: {
         message: text,
         uid: _uid(),
@@ -209,39 +230,67 @@ Page({
       },
       header: { 'Content-Type': 'application/json' },
       timeout: 120000,
-      success: function(res) {
-        var body = res.data || {}
-        var reply = body.reply || body.answer || '无响应'
-        var actions = body.actions
-
-        var finalMsg = _msg('assistant', reply)
-
-        if (actions && actions.length > 0) {
-          var newPts = _execActions(actions, that)
-          var actNames = actions.map(function(a) {
-            if (a.type === 'add') return '已添加「' + (a.name || '地点') + '」'
-            if (a.type === 'remove') return '已删除第' + (a.index + 1) + '个点'
-            if (a.type === 'reorder') return '已重新排序'
-            if (a.type === 'clear') return '已清空所有途经点'
-            if (a.type === 'setCity') return '城市已切换为' + a.name
-            if (a.type === 'search') return '正在搜索「' + (a.keyword || '') + '」'
-            if (a.type === 'optimize') return '已智能排序'
-            if (a.type === 'route') return '查看路线中'
-            if (a.type === 'nearby') return '已搜索附近' + (a.keyword || '美食')
-            if (a.type === 'loadFav') return '已加载收藏路线「' + (a.name || '') + '」'
-            if (a.type === 'deleteFav') return '已删除收藏「' + (a.name || '') + '」'
-            if (a.type === 'saveCurrent') return '已收藏当前路线'
-            return a.type
-          })
-          finalMsg.actionTags = actNames
-        }
-
-        that.setData({ messages: msgs.concat([finalMsg]), sending: false })
-      },
+      success: function(res) { /* handled in onChunkReceived */ },
       fail: function(err) {
-        var finalMsgs = msgs.concat([_msg('assistant', '请求失败: ' + (err.errMsg || '网络错误'))])
+        clearInterval(chunkTimer)
+        var finalMsgs = msgs.slice(0, -1).concat([_msg('assistant', '请求失败: ' + (err.errMsg || '网络错误'))])
         that.setData({ messages: finalMsgs, sending: false })
       }
+    })
+
+    task.onChunkReceived(function(res) {
+      clearInterval(chunkTimer)
+      buffer += (res.data || '')
+
+      var lines = buffer.split('\n')
+      buffer = lines.pop() // 最后一行可能不完整，保留
+
+      lines.forEach(function(line) {
+        if (!line.trim()) return
+        try {
+          var obj = JSON.parse(line)
+          if (obj.text) {
+            var last = msgs[msgs.length - 1]
+            last.content = (last.content === '▌' ? '' : last.content.replace(/ ▌ .+$/, '') || '') + obj.text
+            last.lines = last.content.split('\n')
+            last.loading = true
+            that.setData({ messages: msgs.slice() })
+          }
+          if (obj.done) {
+            var reply = obj.reply || obj.answer || ''
+            var actions = obj.actions
+            var finalMsg = _msg('assistant', reply || '（Taffy 想了想，没说出来…）')
+            if (actions && actions.length > 0) {
+              var actNames = actions.map(function(a) {
+                if (a.type === 'add') return '已添加「' + (a.name || '地点') + '」'
+                if (a.type === 'remove') return '已删除第' + (a.index + 1) + '个点'
+                if (a.type === 'reorder') return '已重新排序'
+                if (a.type === 'clear') return '已清空所有途经点'
+                if (a.type === 'setCity') return '城市已切换为' + a.name
+                if (a.type === 'search') return '正在搜索「' + (a.keyword || '') + '」'
+                if (a.type === 'optimize') return '已智能排序'
+                if (a.type === 'route') return '查看路线中'
+                if (a.type === 'nearby') return '已搜索附近' + (a.keyword || '美食')
+                if (a.type === 'loadFav') return '已加载收藏路线「' + (a.name || '') + '」'
+                if (a.type === 'deleteFav') return '已删除收藏「' + (a.name || '') + '」'
+                if (a.type === 'saveCurrent') return '已收藏当前路线'
+                return a.type
+              })
+              finalMsg.actionTags = actNames
+              _execActions(actions, that)
+            }
+            msgs[msgs.length - 1] = finalMsg
+            that.setData({ messages: msgs.slice(), sending: false })
+          }
+          if (obj.error) {
+            msgs[msgs.length - 1] = _msg('assistant', '出错啦: ' + obj.error)
+            that.setData({ messages: msgs.slice(), sending: false })
+          }
+        } catch(e) {}
+      })
+
+      // 重新启用心跳
+      chunkTimer = setInterval(function() { if (!buffer) _updateDisplay('', false) }, 1000)
     })
   },
 
