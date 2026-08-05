@@ -34,7 +34,7 @@
   flex-shrink: 0;
 }
 
-.avatar.assistant { background: linear-gradient(135deg, #667eea, #764ba2); }
+.avatar.assistant { background: linear-gradient(135deg, #f78da7, #e040fb); }
 .avatar.user { background: linear-gradient(135deg, #43e97b, #38f9d7); color: #333; }
 
 .bubble-wrap {
