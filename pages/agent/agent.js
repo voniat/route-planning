@@ -90,8 +90,12 @@ function _execActions(actions, that) {
       case 'loadFav':
         (function(id, name) {
           run.push(function() {
-            var r = name ? fav.list().filter(function(x) { return x.name === name })[0] : fav.getById(id)
-            if (!r) r = fav.list().filter(function(x) { return x.name && x.name.indexOf(name) >= 0 })[0]
+            var r = fav.getById(id)
+            if (!r && name) {
+              var all = fav.list()
+              r = all.filter(function(x) { return x.name === name })[0]
+              if (!r) r = all.filter(function(x) { return (x.name || '').indexOf(name) >= 0 })[0]
+            }
             if (r) {
               var loaded = r.points.map(function(p) { return { latitude: p.latitude, longitude: p.longitude, title: p.title, id: Date.now() + Math.random() } })
               store.set('selectedPoints', loaded)
@@ -105,12 +109,13 @@ function _execActions(actions, that) {
       case 'deleteFav':
         (function(id, name) {
           run.push(function() {
-            var r = name ? fav.list().filter(function(x) { return x.name === name })[0] : fav.getById(id)
-            if (r) fav.remove(r.id)
-            else {
-              var match = fav.list().filter(function(x) { return x.name && x.name.indexOf(name) >= 0 })[0]
-              if (match) fav.remove(match.id)
+            var r = fav.getById(id)
+            if (!r && name) {
+              var all = fav.list()
+              r = all.filter(function(x) { return x.name === name })[0]
+              if (!r) r = all.filter(function(x) { return (x.name || '').indexOf(name) >= 0 })[0]
             }
+            if (r) fav.remove(r.id)
           })
         })(a.id, a.name)
         break

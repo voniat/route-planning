@@ -4,6 +4,7 @@
   flex-direction: column;
   height: 100vh;
   background: #f5f6fa;
+  overflow: hidden;
 }
 
 .chat-list {
@@ -98,6 +99,7 @@
   overflow-x: auto;
   white-space: nowrap;
   flex-shrink: 0;
+  background: #f5f6fa;
 }
 
 .quick-bar::-webkit-scrollbar { height: 0; }
@@ -119,13 +121,19 @@
   border-color: #1989fa;
 }
 
+/* 底部固定栏 */
+.bottom-bar {
+  flex-shrink: 0;
+  border-top: 1rpx solid #eee;
+  background: #fff;
+}
+
 /* 输入栏 */
 .input-bar {
   display: flex;
   align-items: center;
   padding: 16rpx 24rpx;
   background: #fff;
-  border-top: 1rpx solid #eee;
   gap: 16rpx;
 }
 

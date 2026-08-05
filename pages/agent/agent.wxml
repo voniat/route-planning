@@ -23,23 +23,24 @@
     </block>
   </scroll-view>
 
-  <view class="quick-bar" wx:if="{{!sending}}">
-    <view class="quick-chip" bindtap="quickSend" data-text="帮我优化路线顺序">优化路线</view>
-    <view class="quick-chip" bindtap="quickSend" data-text="附近有什么好吃的">附近美食</view>
-    <view class="quick-chip" bindtap="quickSend" data-text="查看公交路线">查看路线</view>
-    <view class="quick-chip" bindtap="quickSend" data-text="清空所有途经点">清空</view>
-  </view>
-
-  <view class="input-bar">
-    <input
-      class="chat-input"
-      value="{{input}}"
-      placeholder="问路线、查天气、搜美食..."
-      bindinput="onInput"
-      bindconfirm="send"
-      confirm-type="send"
-      disabled="{{sending}}"
-    />
-    <button class="send-btn" size="mini" bindtap="send" disabled="{{sending || !input}}">发送</button>
+  <view class="bottom-bar">
+    <view class="quick-bar" wx:if="{{!sending}}">
+      <view class="quick-chip" bindtap="quickSend" data-text="帮我优化路线顺序">优化路线</view>
+      <view class="quick-chip" bindtap="quickSend" data-text="附近有什么好吃的">附近美食</view>
+      <view class="quick-chip" bindtap="quickSend" data-text="查看公交路线">查看路线</view>
+      <view class="quick-chip" bindtap="quickSend" data-text="清空所有途经点">清空</view>
+    </view>
+    <view class="input-bar">
+      <input
+        class="chat-input"
+        value="{{input}}"
+        placeholder="问路线、查天气、搜美食..."
+        bindinput="onInput"
+        bindconfirm="send"
+        confirm-type="send"
+        disabled="{{sending}}"
+      />
+      <button class="send-btn" size="mini" bindtap="send" disabled="{{sending || !input}}">发送</button>
+    </view>
   </view>
 </view>
