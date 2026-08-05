@@ -205,6 +205,8 @@
       wx:for-item="food"
       wx:for-index="fidx"
     >
+      <image wx:if="{{food.photo}}" class="food-photo" src="{{food.photo}}" mode="aspectFill" lazy-load />
+      <image wx:else class="food-photo" style="opacity:0" />
       <view class="food-info">
         <view class="food-name">{{food.name}}<text class="food-rating-inline" wx:if="{{food.rating > 0}}"> {{food._stars}}</text></view>
         <view class="food-addr">{{food.address}}<text class="food-dist-inline" wx:if="{{food._distKm}}"> · {{food._distKm}}</text></view>

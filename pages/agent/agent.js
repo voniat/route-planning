@@ -67,13 +67,16 @@ function _execActions(actions, that) {
         })
         break
       case 'nearby':
-        run.push(function() {
-          var idx = a.pointIndex || (pts.length - 1); var p = pts[idx]
-          if (p) gaode.poiAround(p.longitude, p.latitude, a.keyword || '美食', 3000).then(function(d) {
-            var pois = (d.pois || []).map(function(f) { return { name: f.name, addr: f.address, lat: parseFloat(f.location.split(',')[1]), lng: parseFloat(f.location.split(',')[0]) } })
-            that.setData({ actionResult: { type: 'nearby', data: pois, pointIdx: idx } })
+        (function(kw, pidx) {
+          run.push(function() {
+            var idx = pidx >= 0 ? pidx : (pts.length - 1)
+            var p = pts[idx]
+            if (!p) return
+            store.set('nearbyKeyword', kw || '美食|餐厅')
+            store.set('nearbyPointIdx', idx)
+            wx.switchTab({ url: '/pages/index/index' })
           })
-        })
+        })(a.keyword, a.pointIndex)
         break
       case 'route':
         run.push(function() { if (pts.length >= 2) wx.navigateTo({ url: '/pages/routes/routes' }) })

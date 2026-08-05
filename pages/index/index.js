@@ -131,6 +131,14 @@ Page({
 
   onShow: function() {
     if (this._firstLoadDone) this.loadPoints()
+    var kw = store.get('nearbyKeyword')
+    var pidx = store.get('nearbyPointIdx')
+    if (kw && pidx != null) {
+      store.set('nearbyKeyword', null)
+      store.set('nearbyPointIdx', null)
+      var that = this
+      setTimeout(function() { that._searchFoodNear(pidx, kw) }, 400)
+    }
   },
 
   getUserLocation: function() {
@@ -970,18 +978,22 @@ Page({
     })
   },
 
-  _searchFoodNear: function(pointIdx) {
+  _searchFoodNear: function(pointIdx, keyword) {
     var p = this.data.points[pointIdx]
     if (!p) return
     this._foodPointIdx = pointIdx
     var that = this
+    var kw = keyword || '美食|餐厅|小吃|火锅|面馆|快餐|咖啡|奶茶|烧烤|日料'
     this.setData({ foodResults: [], showFoodPanel: true, foodLoading: true })
-    gaode.poiAround(p.longitude, p.latitude, '美食|餐厅|小吃|火锅|面馆|快餐|咖啡|奶茶|烧烤|日料', 3000).then(function(data) {
+    gaode.poiAround(p.longitude, p.latitude, kw, 3000).then(function(data) {
       var pois = (data.pois || []).map(function(item) {
         var loc = (item.location || '').split(',')
+        var photos = item.photos || []
+        var photo = photos.length > 0 && photos[0] && photos[0].url ? photos[0].url.replace('http://', 'https://') : ''
         return {
           name: item.name || '',
           address: item.address || '',
+          photo: photo,
           lat: parseFloat(loc[1]) || 0,
           lng: parseFloat(loc[0]) || 0,
           distance: parseInt(item.distance) || 0,
