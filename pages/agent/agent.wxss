@@ -37,12 +37,15 @@
 .avatar.assistant { background: linear-gradient(135deg, #667eea, #764ba2); }
 .avatar.user { background: linear-gradient(135deg, #43e97b, #38f9d7); color: #333; }
 
-.bubble {
+.bubble-wrap {
   max-width: 480rpx;
+}
+
+.bubble {
   padding: 16rpx 24rpx;
   border-radius: 12rpx;
   font-size: 28rpx;
-  line-height: 1.5;
+  line-height: 1.6;
   word-break: break-all;
 }
 
@@ -62,6 +65,61 @@
 
 .loading-text { color: #999; }
 
+/* 动作标签 */
+.action-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8rpx;
+  margin-left: 16rpx;
+  margin-top: 8rpx;
+}
+
+.msg.user .action-tags {
+  margin-left: 0;
+  margin-right: 16rpx;
+  justify-content: flex-end;
+}
+
+.action-tag {
+  background: #e8f4fd;
+  color: #1989fa;
+  font-size: 22rpx;
+  padding: 4rpx 14rpx;
+  border-radius: 8rpx;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* 快捷操作 */
+.quick-bar {
+  display: flex;
+  gap: 12rpx;
+  padding: 12rpx 24rpx;
+  overflow-x: auto;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.quick-bar::-webkit-scrollbar { height: 0; }
+
+.quick-chip {
+  flex-shrink: 0;
+  padding: 10rpx 22rpx;
+  background: #fff;
+  border: 1rpx solid #e0e4ea;
+  border-radius: 20rpx;
+  font-size: 24rpx;
+  color: #555;
+  font-weight: 500;
+}
+
+.quick-chip:active {
+  background: #e8f4fd;
+  color: #1989fa;
+  border-color: #1989fa;
+}
+
+/* 输入栏 */
 .input-bar {
   display: flex;
   align-items: center;
