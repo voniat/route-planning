@@ -214,7 +214,14 @@
   </scroll-view>
 </view>
 
-<view class="ai-button" bindtap="goAgent">
+<view
+  class="ai-button {{aiDragging ? 'dragging' : ''}}"
+  style="left: {{aiBtnX}}px; top: {{aiBtnY}}px;"
+  bindtouchstart="onAiBtnStart"
+  bindtouchmove="onAiBtnMove"
+  bindtouchend="onAiBtnEnd"
+  catchtap="goAgent"
+>
   <text class="ai-button-icon">AI</text>
 </view>
 

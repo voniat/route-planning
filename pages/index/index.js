@@ -69,7 +69,9 @@ Page({
     showFoodPanel: false,
     foodLoading: false,
     pointsHidden: false,
-    shareCanvasH: 0
+    shareCanvasH: 0,
+    aiBtnX: 0,
+    aiBtnY: 0
   },
 
   onLoad: function(options) {
@@ -84,6 +86,7 @@ Page({
     this.setData({ provList: provList, citySubList: citySubList })
     this.getUserLocation()
     this.loadSavedRoutes()
+    this._initAiBtn()
     if (options && options.share) {
       try {
         var d = JSON.parse(decodeURIComponent(options.share))
@@ -654,6 +657,45 @@ Page({
   goAgent: function() {
     var city = this.data.cityName || '北京'
     wx.navigateTo({ url: '/pages/agent/agent?city=' + encodeURIComponent(city) })
+  },
+
+  _initAiBtn: function() {
+    var sys = wx.getSystemInfoSync()
+    var saved = wx.getStorageSync('aiBtnPos')
+    var x = saved && typeof saved.x === 'number' ? saved.x : sys.windowWidth - 55
+    var y = saved && typeof saved.y === 'number' ? saved.y : sys.windowHeight - 200
+    this.setData({ aiBtnX: x, aiBtnY: y })
+  },
+
+  onAiBtnStart: function(e) {
+    this._aiDrag = {
+      startX: e.touches[0].clientX,
+      startY: e.touches[0].clientY,
+      origX: this.data.aiBtnX,
+      origY: this.data.aiBtnY,
+      moved: false
+    }
+    this.setData({ aiDragging: true })
+  },
+
+  onAiBtnMove: function(e) {
+    if (!this._aiDrag) return
+    var dx = e.touches[0].clientX - this._aiDrag.startX
+    var dy = e.touches[0].clientY - this._aiDrag.startY
+    if (Math.abs(dx) > 5 || Math.abs(dy) > 5) this._aiDrag.moved = true
+    this.setData({
+      aiBtnX: this._aiDrag.origX + dx,
+      aiBtnY: this._aiDrag.origY + dy
+    })
+  },
+
+  onAiBtnEnd: function(e) {
+    if (!this._aiDrag) return
+    if (this._aiDrag.moved) {
+      wx.setStorageSync('aiBtnPos', { x: this.data.aiBtnX, y: this.data.aiBtnY })
+    }
+    this._aiDrag = null
+    this.setData({ aiDragging: false })
   },
 
   showCityPicker: function() {
