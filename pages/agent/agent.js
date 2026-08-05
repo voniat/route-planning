@@ -1,6 +1,7 @@
 var store = require('../../utils/store')
 var gaode = require('../../utils/gaode')
 var common = require('../../utils/common')
+var fav = require('../../utils/favorite-service')
 
 var MAX_POINTS = 20
 
@@ -27,7 +28,10 @@ function _historySummary(msgs) {
 function _buildContext() {
   var points = store.get('selectedPoints') || []
   var city = store.get('currentCity') || '北京'
-  return { points: points, city: city }
+  var routes = fav.list().slice(0, 20).map(function(r) {
+    return { id: r.id, name: r.name, city: r.city, count: r.points.length, savedAt: r.savedAt }
+  })
+  return { points: points, city: city, savedRoutes: routes }
 }
 
 // ── Action 执行 ──
@@ -79,6 +83,39 @@ function _execActions(actions, that) {
           var best = _nearestNeighbor(pts)
           pts = best
         }
+        break
+      case 'loadFav':
+        (function(id, name) {
+          run.push(function() {
+            var r = name ? fav.list().filter(function(x) { return x.name === name })[0] : fav.getById(id)
+            if (!r) r = fav.list().filter(function(x) { return x.name && x.name.indexOf(name) >= 0 })[0]
+            if (r) {
+              var loaded = r.points.map(function(p) { return { latitude: p.latitude, longitude: p.longitude, title: p.title, id: Date.now() + Math.random() } })
+              store.set('selectedPoints', loaded)
+              if (r.city) store.set('currentCity', r.city)
+              var pages = getCurrentPages()
+              if (pages.length > 1 && pages[pages.length - 2].renderMap) pages[pages.length - 2].renderMap()
+            }
+          })
+        })(a.id, a.name)
+        break
+      case 'deleteFav':
+        (function(id, name) {
+          run.push(function() {
+            var r = name ? fav.list().filter(function(x) { return x.name === name })[0] : fav.getById(id)
+            if (r) fav.remove(r.id)
+            else {
+              var match = fav.list().filter(function(x) { return x.name && x.name.indexOf(name) >= 0 })[0]
+              if (match) fav.remove(match.id)
+            }
+          })
+        })(a.id, a.name)
+        break
+      case 'saveCurrent':
+        run.push(function() {
+          var cur = store.get('selectedPoints') || []
+          if (cur.length > 0) { fav.add(cur, [], store.get('currentCity') || ''); wx.showToast({ title: '已收藏', icon: 'success' }) }
+        })
         break
     }
   })
@@ -164,6 +201,7 @@ Page({
         context: {
           city: ctx.city,
           points: (ctx.points || []).map(function(p) { return { name: p.title, lat: p.latitude, lng: p.longitude } }),
+          savedRoutes: ctx.savedRoutes || [],
           historySummary: _historySummary(msgs)
         }
       },
@@ -188,6 +226,9 @@ Page({
             if (a.type === 'optimize') return '已智能排序'
             if (a.type === 'route') return '查看路线中'
             if (a.type === 'nearby') return '已搜索附近' + (a.keyword || '美食')
+            if (a.type === 'loadFav') return '已加载收藏路线「' + (a.name || '') + '」'
+            if (a.type === 'deleteFav') return '已删除收藏「' + (a.name || '') + '」'
+            if (a.type === 'saveCurrent') return '已收藏当前路线'
             return a.type
           })
           finalMsg.actionTags = actNames
