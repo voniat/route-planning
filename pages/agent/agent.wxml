@@ -10,9 +10,7 @@
           <view class="bubble {{item.role}}">
             <text wx:if="{{item.loading}}" class="loading-text">{{item.content}}</text>
             <block wx:else>
-              <block wx:for="{{item.content.split('\n')}}" wx:for-item="line" wx:key="*this">
-                <view>{{line}}</view>
-              </block>
+              <view wx:for="{{item.lines}}" wx:for-item="line" wx:key="*this">{{line}}</view>
             </block>
           </view>
           <block wx:if="{{item.actionTags && item.actionTags.length > 0}}">

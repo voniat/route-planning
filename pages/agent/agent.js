@@ -4,6 +4,11 @@ var common = require('../../utils/common')
 
 var MAX_POINTS = 20
 
+function _msg(role, content, extra) {
+  var m = Object.assign({ role: role, content: content, lines: (content || '').split('\n') }, extra || {})
+  return m
+}
+
 function _uid() {
   var id = wx.getStorageSync('agent_uid')
   if (!id) { id = 'wx_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8); wx.setStorageSync('agent_uid', id) }
@@ -118,7 +123,7 @@ Page({
     var welcome = '你好！我是 Taffy，你的旅行规划助手~'
     if (pnames) welcome += '\n\n当前路线: ' + pnames + '\n在「' + (ctx.city || '北京') + '」'
     welcome += '\n\n可以让我帮你：添加地点、删除站点、重新排序、搜索美食、查看路线，直接说就好~'
-    this.setData({ messages: [{ role: 'assistant', content: welcome }] })
+    this.setData({ messages: [_msg('assistant', welcome)] })
   },
 
   onShow: function() {
@@ -141,10 +146,10 @@ Page({
     var text = this.data.input.trim()
     if (!text || this.data.sending) return
 
-    var msgs = this.data.messages.concat([{ role: 'user', content: text }])
+    var msgs = this.data.messages.concat([_msg('user', text)])
     this.setData({ messages: msgs, input: '', sending: true, actionResult: null })
 
-    var loadingMsg = { role: 'assistant', content: '思考中...', loading: true }
+    var loadingMsg = _msg('assistant', '思考中...', { loading: true })
     this.setData({ messages: msgs.concat([loadingMsg]) })
 
     var ctx = _buildContext()
@@ -169,7 +174,7 @@ Page({
         var reply = body.reply || body.answer || '无响应'
         var actions = body.actions
 
-        var finalMsg = { role: 'assistant', content: reply }
+        var finalMsg = _msg('assistant', reply)
 
         if (actions && actions.length > 0) {
           var newPts = _execActions(actions, that)
@@ -191,7 +196,7 @@ Page({
         that.setData({ messages: msgs.concat([finalMsg]), sending: false })
       },
       fail: function(err) {
-        var finalMsgs = msgs.concat([{ role: 'assistant', content: '请求失败: ' + (err.errMsg || '网络错误') }])
+        var finalMsgs = msgs.concat([_msg('assistant', '请求失败: ' + (err.errMsg || '网络错误'))])
         that.setData({ messages: finalMsgs, sending: false })
       }
     })
