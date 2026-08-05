@@ -213,8 +213,7 @@ Page({
         context: {
           city: ctx.city,
           points: (ctx.points || []).map(function(p) { return { name: p.title, lat: p.latitude, lng: p.longitude } }),
-          savedRoutes: ctx.savedRoutes || [],
-          historySummary: _historySummary(msgs)
+          savedRoutes: ctx.savedRoutes || []
         }
       },
       header: { 'Content-Type': 'application/json' },
