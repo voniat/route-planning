@@ -1003,8 +1003,8 @@ Page({
     this.setData({ showFoodPanel: false, foodResults: [] })
   },
 
-  _addFoodToRoute: function(e) {
-    var idx = parseInt(e.currentTarget.dataset.index)
+  onFoodAdd: function(e) {
+    var idx = e.detail.index
     var food = this.data.foodResults[idx]
     if (!food) return
     if (this.data.points.length >= MAX_POINTS) {
@@ -1029,5 +1029,18 @@ Page({
     this.renderMap()
     this.setData({ showFoodPanel: false, foodResults: [] })
     wx.showToast({ title: '已添加 ' + food.name, icon: 'success' })
+  },
+
+  onSavedLoad: function(e) {
+    var id = e.detail.id
+    this.loadRoute({ currentTarget: { dataset: { id: id } } })
+  },
+
+  onSavedDelete: function(e) {
+    this.deleteSavedRoute({ currentTarget: { dataset: { id: e.detail.id } } })
+  },
+
+  onSavedClose: function() {
+    this.toggleSavedPanel()
   }
 })

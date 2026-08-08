@@ -1,4 +1,8 @@
 {
   "navigationBarTitleText": "旅行路线规划",
-  "usingComponents": {}
+  "usingComponents": {
+    "privacy-modal": "/components/privacy-modal/privacy-modal",
+    "food-panel": "/components/food-panel/food-panel",
+    "saved-panel": "/components/saved-panel/saved-panel"
+  }
 }
