@@ -3,6 +3,7 @@ var common = require('../../utils/common')
 var favoriteService = require('../../utils/favorite-service')
 var gaode = require('../../utils/gaode')
 var cities = require('../../utils/cities')
+var foodScorer = require('../../utils/food-scorer')
 
 function parseBounds(bounds) {
   if (!bounds || typeof bounds !== 'string') return null
@@ -989,36 +990,8 @@ Page({
     var kw = keyword || '美食|餐厅|小吃|火锅|面馆|快餐|咖啡|奶茶|烧烤|日料'
     this.setData({ foodResults: [], showFoodPanel: true, foodLoading: true })
     gaode.poiAround(p.longitude, p.latitude, kw, 3000).then(function(data) {
-      var pois = (data.pois || []).map(function(item) {
-        var loc = (item.location || '').split(',')
-        var photos = item.photos || []
-        var photo = photos.length > 0 && photos[0] && photos[0].url ? photos[0].url.replace('http://', 'https://') : ''
-        return {
-          name: item.name || '',
-          address: item.address || '',
-          photo: photo,
-          lat: parseFloat(loc[1]) || 0,
-          lng: parseFloat(loc[0]) || 0,
-          distance: parseInt(item.distance) || 0,
-          rating: item.biz_ext && item.biz_ext.rating ? parseFloat(item.biz_ext.rating) : 0
-        }
-      }).filter(function(item) { return item.name && item.lat })
-      var ALPHA = 0.3
-      var maxDist = 0
-      pois.forEach(function(item) { if (item.distance > maxDist) maxDist = item.distance })
-      pois.forEach(function(item) {
-        var distScore = maxDist > 0 ? (1 - item.distance / maxDist) : 1
-        var ratingScore = item.rating > 0 ? item.rating / 5 : 0.5
-        item._score = ALPHA * distScore + (1 - ALPHA) * ratingScore
-        item._distKm = item.distance >= 1000 ? (item.distance / 1000).toFixed(1) + 'km' : item.distance + 'm'
-        var full = item.rating > 0 ? Math.round(item.rating) : 0
-        var empty = item.rating > 0 ? 5 - full : 0
-        item._stars = ''
-        for (var s = 0; s < full; s++) item._stars += '★'
-        for (var s = 0; s < empty; s++) item._stars += '☆'
-      })
-      pois.sort(function(a, b) { return b._score - a._score })
-      that.setData({ foodResults: pois.slice(0, 20), foodLoading: false })
+      var results = foodScorer.scoreFoodPois(data.pois)
+      that.setData({ foodResults: results, foodLoading: false })
     }).catch(function(e) {
       console.error('[food search]', e)
       that.setData({ foodLoading: false })
