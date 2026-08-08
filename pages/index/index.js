@@ -4,32 +4,7 @@ var favoriteService = require('../../utils/favorite-service')
 var gaode = require('../../utils/gaode')
 var cities = require('../../utils/cities')
 var foodScorer = require('../../utils/food-scorer')
-
-function parseBounds(bounds) {
-  if (!bounds || typeof bounds !== 'string') return null
-  var out = []
-  var pts = bounds.split(';')
-  for (var i = 0; i < pts.length; i++) {
-    var parts = pts[i].split(',')
-    var lng = parseFloat(parts[0])
-    var lat = parseFloat(parts[1])
-    if (!isNaN(lng) && !isNaN(lat)) out.push({ longitude: lng, latitude: lat })
-  }
-  if (out.length < 2) return null
-  var minLng = Infinity, minLat = Infinity, maxLng = -Infinity, maxLat = -Infinity
-  out.forEach(function(p) {
-    if (p.longitude < minLng) minLng = p.longitude
-    if (p.latitude < minLat) minLat = p.latitude
-    if (p.longitude > maxLng) maxLng = p.longitude
-    if (p.latitude > maxLat) maxLat = p.latitude
-  })
-  return [
-    { longitude: minLng, latitude: minLat },
-    { longitude: maxLng, latitude: minLat },
-    { longitude: maxLng, latitude: maxLat },
-    { longitude: minLng, latitude: maxLat }
-  ]
-}
+var optimizer = require('../../utils/route-optimizer')
 
 var MAX_POINTS = 20
 
@@ -246,7 +221,7 @@ Page({
 
     var polygons = []
     points.forEach(function(p) {
-      var rect = parseBounds(p.bounds)
+      var rect = optimizer.parseBounds(p.bounds)
       if (rect) {
         polygons.push({
           points: rect,
@@ -530,36 +505,19 @@ Page({
       wx.showToast({ title: '起终点之间至少加1个中途点', icon: 'none' })
       return
     }
-    var start = points[0]
-    var middle = points.slice(1, points.length - 1)
-    var end = points[points.length - 1]
     var times = this.data.pointTimes.slice()
-    var startTime = times[0]
-    var middleTimes = times.slice(1, times.length - 1)
-    var endTime = times[times.length - 1]
-
-    var result = [start]
-    var resultTimes = [startTime]
-    var current = start
-    var remaining = middle.slice()
-    var remainingTimes = middleTimes.slice()
-
-    while (remaining.length > 0) {
-      var nearestIdx = 0
-      var minDist = Infinity
-      for (var i = 0; i < remaining.length; i++) {
-        var d = common.haversine(current.latitude, current.longitude, remaining[i].latitude, remaining[i].longitude)
-        if (d < minDist) { minDist = d; nearestIdx = i }
+    var reordered = optimizer.nearestNeighbor(points)
+    var newTimes = []
+    for (var i = 0; i < reordered.length; i++) {
+      for (var j = 0; j < points.length; j++) {
+        if (reordered[i].latitude === points[j].latitude && reordered[i].longitude === points[j].longitude) {
+          newTimes[i] = times[j]
+          break
+        }
       }
-      current = remaining.splice(nearestIdx, 1)[0]
-      result.push(current)
-      resultTimes.push(remainingTimes.splice(nearestIdx, 1)[0])
     }
-    result.push(end)
-    resultTimes.push(endTime)
-
-    this.setData({ points: result, pointTimes: resultTimes })
-    store.set('selectedPoints', result)
+    this.setData({ points: reordered, pointTimes: newTimes })
+    store.set('selectedPoints', reordered)
     this.renderMap()
     wx.showToast({ title: '已按最短路径重排', icon: 'success' })
   },

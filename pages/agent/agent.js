@@ -1,6 +1,6 @@
 var store = require('../../utils/store')
-var common = require('../../utils/common')
 var fav = require('../../utils/favorite-service')
+var optimizer = require('../../utils/route-optimizer')
 
 var MAX_POINTS = 20
 
@@ -82,7 +82,7 @@ function _execActions(actions, that) {
         break
       case 'optimize':
         if (pts.length >= 3) {
-          var best = _nearestNeighbor(pts)
+          var best = optimizer.nearestNeighbor(pts)
           pts = best
         }
         break
@@ -131,26 +131,7 @@ function _execActions(actions, that) {
 
   store.set('selectedPoints', pts)
   run.forEach(function(fn) { fn() })
-  return pts
-}
-
-function _nearestNeighbor(pts) {
-  var n = pts.length
-  if (n < 3) return pts
-  var visited = {}; visited[0] = true
-  var order = [pts[0]]; var current = pts[0]
-  while (order.length < n - 1) {
-    var best = -1, bestDist = Infinity
-    for (var i = 1; i < n - 1; i++) {
-      if (visited[i]) continue
-      var d = common.haversine(current.latitude, current.longitude, pts[i].latitude, pts[i].longitude)
-      if (d < bestDist) { bestDist = d; best = i }
-    }
-    if (best < 0) break
-    visited[best] = true; order.push(pts[best]); current = pts[best]
-  }
-  order.push(pts[n - 1])
-  return order
+    return pts
 }
 
 // ── Page ──
