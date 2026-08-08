@@ -15,15 +15,6 @@ function _uid() {
   return id
 }
 
-function _historySummary(msgs) {
-  var lines = []
-  for (var i = 0; i < msgs.length && i < 6; i++) {
-    var m = msgs[i]
-    if (!m.loading) lines.push((m.role === 'user' ? '用户: ' : '助手: ') + m.content.slice(0, 80))
-  }
-  return lines.join('\n')
-}
-
 function _buildContext() {
   var points = store.get('selectedPoints') || []
   var city = store.get('currentCity') || '北京'
@@ -131,7 +122,7 @@ function _execActions(actions, that) {
 
   store.set('selectedPoints', pts)
   run.forEach(function(fn) { fn() })
-    return pts
+  return pts
 }
 
 // ── Page ──
