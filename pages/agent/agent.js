@@ -1,5 +1,4 @@
 var store = require('../../utils/store')
-var gaode = require('../../utils/gaode')
 var common = require('../../utils/common')
 var fav = require('../../utils/favorite-service')
 

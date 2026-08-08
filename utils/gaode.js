@@ -27,12 +27,6 @@ function callGaode(type, params) {
   })
 }
 
-function geocode(address, city) {
-  var params = { address: address }
-  if (city) params.city = city
-  return callGaode('geocode', params)
-}
-
 function regeocode(lng, lat) {
   return callGaode('regeocode', { location: lng + ',' + lat })
 }
@@ -88,8 +82,6 @@ function decodePolyline(str) {
 }
 
 module.exports = {
-  callGaode: callGaode,
-  geocode: geocode,
   regeocode: regeocode,
   poiSearch: poiSearch,
   poiAround: poiAround,

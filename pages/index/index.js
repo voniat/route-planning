@@ -596,14 +596,6 @@ Page({
     this.setData({ pointTimes: times, editingTimeIdx: -1 })
   },
 
-  onTimeChange: function(e) {
-    var idx = parseInt(e.currentTarget.dataset.index)
-    var val = e.detail.value
-    var times = this.data.pointTimes.slice()
-    times[idx] = val
-    this.setData({ pointTimes: times })
-  },
-
   autoFillTimes: function() {
     var points = this.data.points
     if (points.length < 2) return
