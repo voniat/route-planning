@@ -2,8 +2,7 @@
   "pages": [
     "pages/index/index",
     "pages/search/search",
-    "pages/routes/routes",
-    "pages/agent/agent"
+    "pages/routes/routes"
   ],
   "window": {
     "navigationBarBackgroundColor": "#ffffff",

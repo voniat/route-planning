@@ -46,7 +46,7 @@
 .result-addr { font-size: 24rpx; color: #999; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .dist-tag {
   display: inline-block; margin-left: 12rpx; padding: 2rpx 10rpx;
-  background: #e8f8e8; color: #07c160; font-size: 20rpx; border-radius: 6rpx;
+  background: #e8f8e8;color: #07c160; font-size: 20rpx; border-radius: 6rpx;
   vertical-align: middle;
 }
 .area-tag {

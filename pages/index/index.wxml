@@ -177,17 +177,6 @@
   bind:add="onFoodAdd"
 />
 
-<view
-  class="ai-button {{aiDragging ? 'dragging' : ''}}"
-  style="left: {{aiBtnX}}px; top: {{aiBtnY}}px;"
-  bindtouchstart="onAiBtnStart"
-  bindtouchmove="onAiBtnMove"
-  bindtouchend="onAiBtnEnd"
-  catchtap="goAgent"
->
-  <text class="ai-button-icon">AI</text>
-</view>
-
 <privacy-modal show="{{showPrivacy}}" bind:agree="agreePrivacy" bind:disagree="disagreePrivacy" />
 
 <canvas canvas-id="shareCanvas" class="share-canvas" style="height: {{shareCanvasH}}px;"></canvas>
