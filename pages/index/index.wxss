@@ -126,6 +126,11 @@ page { height: 100%; background: #edf0f5; }
   box-shadow: 0 2rpx 8rpx rgba(0,0,0,0.04);
   max-width: 160rpx;
 }
+.btn-start {
+  background: linear-gradient(135deg, #07c160, #2ecc71);
+  color: #fff;
+  box-shadow: 0 8rpx 24rpx rgba(7,193,96,0.35);
+}
 .hint {
   text-align: center; color: #999; font-size: 28rpx;
   background: rgba(255,255,255,0.9); padding: 20rpx 32rpx;
@@ -256,4 +261,33 @@ page { height: 100%; background: #edf0f5; }
 .share-canvas {
   position: fixed; left: -9999px; top: 0;
   width: 375px;
+}
+
+.trip-panel {
+  position: fixed; left: 24rpx; right: 24rpx; bottom: 32rpx;
+  background: rgba(255,255,255,0.97); border-radius: 24rpx;
+  padding: 28rpx 32rpx; z-index: 30;
+  box-shadow: 0 12rpx 40rpx rgba(0,0,0,0.18);
+}
+.trip-header {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 16rpx;
+}
+.trip-progress { font-size: 24rpx; color: #1989fa; font-weight: 700; letter-spacing: 1rpx; }
+.trip-exit { font-size: 24rpx; color: #999; padding: 4rpx 8rpx; }
+.trip-current { margin-bottom: 10rpx; }
+.trip-label { display: block; font-size: 22rpx; color: #999; margin-bottom: 4rpx; }
+.trip-name {
+  font-size: 32rpx; color: #07c160; font-weight: 700;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block;
+}
+.trip-name.next { color: #1989fa; }
+.trip-arrow { text-align: center; font-size: 24rpx; color: #999; margin: 8rpx 0; }
+.trip-next { margin-bottom: 20rpx; }
+.trip-info { display: block; font-size: 24rpx; color: #666; margin-top: 6rpx; }
+.trip-btn {
+  background: linear-gradient(135deg, #07c160, #2ecc71);
+  color: #fff; text-align: center; padding: 26rpx;
+  border-radius: 48rpx; font-size: 30rpx; font-weight: 700;
+  box-shadow: 0 8rpx 24rpx rgba(7,193,96,0.35);
 }

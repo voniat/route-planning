@@ -14,7 +14,7 @@
   bindlongtap="onMapTap"
 ></map>
 
-<view class="search-bar" wx:if="{{!sorting}}">
+<view class="search-bar" wx:if="{{!sorting && !tripMode}}">
   <view class="city-picker" bindtap="showCityPicker">
     <view class="city-label">{{cityName}}</view>
     <view class="city-arrow">▾</view>
@@ -25,10 +25,10 @@
   </view>
 </view>
 
-<view class="point-list" style="bottom: {{points.length >= 2 ? '210rpx' : (points.length > 0 ? '120rpx' : '40rpx')}}" wx:if="{{points.length > 0 && !pointsHidden}}">
+<view class="point-list" style="bottom: {{points.length >= 2 ? '210rpx' : (points.length > 0 ? '120rpx' : '40rpx')}}" wx:if="{{points.length > 0 && !pointsHidden && !tripMode}}">
   <view class="point-list-header">
     <text class="point-list-title">途经点 ({{points.length}})</text>
-    <text class="point-list-hint" wx:if="{{!sorting}}">长按拖拽排序 · <text class="optimize-btn" catchtap="optimizeRoute">智能优化</text></text>
+    <text class="point-list-hint" wx:if="{{!sorting}}">长按拖拽排序</text>
     <text class="point-list-hint sorting" wx:else>拖拽中 松开完成</text>
   </view>
   <view
@@ -90,9 +90,12 @@
   </view>
 </view>
 
-<view class="toolbar-row" wx:if="{{!sorting}}">
+<view class="toolbar-row" wx:if="{{!sorting && !tripMode}}">
   <view class="toolbar-btn" bindtap="togglePoints">
     <text>{{pointsHidden ? '📋 显示途径点' : '📋 隐藏途径点'}}</text>
+  </view>
+  <view class="toolbar-btn" bindtap="copyItinerary">
+    <text>📋 复制行程</text>
   </view>
   <view class="toolbar-btn" bindtap="toggleSavedPanel">
     <text>⭐ 已收藏 {{savedRoutes.length > 0 ? '(' + savedRoutes.length + ')' : ''}}</text>
@@ -110,13 +113,14 @@
   bind:delete="onSavedDelete"
 />
 
-<view class="bottom-actions" wx:if="{{points.length >= 2}}">
+<view class="bottom-actions" wx:if="{{points.length >= 2 && !tripMode}}">
   <view class="btn btn-subtle" bindtap="clearAll">清空</view>
   <view class="btn btn-outline" bindtap="saveRoute">收藏路线</view>
   <view class="btn btn-primary" bindtap="goRoutes">查看交通路线</view>
+  <view class="btn btn-start" bindtap="startTrip">▶ 出发</view>
 </view>
 
-<view class="bottom-actions" wx:if="{{points.length === 1}}">
+<view class="bottom-actions" wx:if="{{points.length === 1 && !tripMode}}">
   <view class="btn btn-outline" bindtap="saveRoute">收藏路线</view>
   <view class="hint">至少添加 2 个地点才能规划路线</view>
 </view>
@@ -178,5 +182,22 @@
 />
 
 <privacy-modal show="{{showPrivacy}}" bind:agree="agreePrivacy" bind:disagree="disagreePrivacy" />
+
+<view class="trip-panel" wx:if="{{tripMode}}">
+  <view class="trip-header">
+    <text class="trip-progress">第 {{tripIdx + 1}} / {{points.length}} 站</text>
+    <text class="trip-exit" bindtap="exitTrip">✕ 退出</text>
+  </view>
+  <view class="trip-current">
+    <text class="trip-label">当前</text>
+    <text class="trip-name">{{points[tripIdx].title}}</text>
+  </view>
+  <view class="trip-arrow">⬇ 前往下一站</view>
+  <view class="trip-next" wx:if="{{tripIdx < points.length - 1}}">
+    <text class="trip-name next">{{points[tripIdx + 1].title}}</text>
+    <text class="trip-info">{{tripInfo}}</text>
+  </view>
+  <view class="trip-btn" bindtap="tripArrive">{{tripIdx < points.length - 2 ? '✓ 已到达，去下一站' : '🏁 行程完成'}}</view>
+</view>
 
 <canvas canvas-id="shareCanvas" class="share-canvas" style="height: {{shareCanvasH}}px;"></canvas>

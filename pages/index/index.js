@@ -46,7 +46,10 @@ Page({
     showFoodPanel: false,
     foodLoading: false,
     pointsHidden: false,
-    shareCanvasH: 0
+    shareCanvasH: 0,
+    tripMode: false,
+    tripIdx: 0,
+    tripInfo: ''
   },
 
   onLoad: function(options) {
@@ -96,6 +99,42 @@ Page({
     var minutes = []
     for (var m = 0; m < 60; m += 5) { minutes.push((m < 10 ? '0' : '') + m) }
     this.setData({ hourRange: hours, minuteRange: minutes })
+    if (!options || !options.share) {
+      this._restoreDraft()
+    }
+  },
+
+  _restoreDraft: function() {
+    var existing = store.get('selectedPoints') || []
+    if (existing.length > 0) return
+    try {
+      var draft = wx.getStorageSync('draft_route')
+      if (!draft || !Array.isArray(draft.points) || draft.points.length === 0) return
+      store.set('selectedPoints', draft.points.slice(0, MAX_POINTS))
+      if (Array.isArray(draft.times)) this._draftTimes = draft.times.slice()
+      if (draft.city && draft.city !== '全国') {
+        store.set('currentCity', draft.city)
+        this.setData({ cityName: draft.city })
+        var that = this
+        cities.PROVINCE_DATA.forEach(function(p, i) {
+          var j = p.cities.indexOf(draft.city)
+          if (j >= 0) {
+            that.setData({ provIdx: i, citySubIdx: j, citySubList: p.cities })
+          }
+        })
+      }
+    } catch (e) { console.error('[draft restore]', e) }
+  },
+
+  _persistDraft: function() {
+    try {
+      wx.setStorageSync('draft_route', {
+        points: this.data.points,
+        times: this.data.pointTimes,
+        city: this.data.cityName,
+        savedAt: Date.now()
+      })
+    } catch (e) { console.error('[draft save]', e) }
   },
 
   onReady: function() {
@@ -152,6 +191,9 @@ Page({
     if (this._sharedTimes && this._sharedTimes.length) {
       times = this._sharedTimes.slice()
       this._sharedTimes = null
+    } else if (this._draftTimes && this._draftTimes.length) {
+      times = this._draftTimes.slice()
+      this._draftTimes = null
     } else {
       times = this.data.pointTimes
     }
@@ -392,6 +434,7 @@ Page({
     var times = this.data.pointTimes.slice()
     times.push('')
     this.setData({ pointTimes: times })
+    this._persistDraft()
   },
 
   onPOITap: function(e) {
@@ -487,29 +530,7 @@ Page({
     var t = times.splice(fromIdx, 1)[0]
     times.splice(toIdx, 0, t)
     this.setData({ pointTimes: times })
-  },
-
-  optimizeRoute: function() {
-    var points = this.data.points.slice()
-    if (points.length < 3) {
-      wx.showToast({ title: '起终点之间至少加1个中途点', icon: 'none' })
-      return
-    }
-    var times = this.data.pointTimes.slice()
-    var reordered = optimizer.nearestNeighbor(points)
-    var newTimes = []
-    for (var i = 0; i < reordered.length; i++) {
-      for (var j = 0; j < points.length; j++) {
-        if (reordered[i].latitude === points[j].latitude && reordered[i].longitude === points[j].longitude) {
-          newTimes[i] = times[j]
-          break
-        }
-      }
-    }
-    this.setData({ points: reordered, pointTimes: newTimes })
-    store.set('selectedPoints', reordered)
-    this.renderMap()
-    wx.showToast({ title: '已按最短路径重排', icon: 'success' })
+    this._persistDraft()
   },
 
   toggleTimePanel: function() {
@@ -543,6 +564,7 @@ Page({
     var times = this.data.pointTimes.slice()
     times[idx] = (h < 10 ? '0' : '') + h + ':' + (m < 10 ? '0' : '') + m
     this.setData({ pointTimes: times, editingTimeIdx: -1 })
+    this._persistDraft()
   },
 
   autoFillTimes: function() {
@@ -563,6 +585,7 @@ Page({
       if (h >= 24) h = h % 24
     }
     this.setData({ pointTimes: times })
+    this._persistDraft()
   },
 
   removePointByIdx: function(idx) {
@@ -574,6 +597,7 @@ Page({
     times.splice(idx, 1)
     this.setData({ pointTimes: times })
     this.renderMap()
+    this._persistDraft()
   },
 
   focusPoint: function(e) {
@@ -676,6 +700,7 @@ Page({
     this.setData({ points: points, pointTimes: route.times || [], showSavedPanel: false })
     store.set('selectedPoints', points)
     this.renderMap()
+    this._persistDraft()
     if (points.length > 0) {
       this.setData({ latitude: points[points.length - 1].latitude, longitude: points[points.length - 1].longitude, scale: 14 })
       this.syncCityFromPoint(points[points.length - 1])
@@ -793,6 +818,7 @@ Page({
         if (res.confirm) {
           that.setData({ points: [], markers: [], polyline: null, polygons: [], pointTimes: [], routeTimeText: '' })
           store.set('selectedPoints', [])
+          try { wx.removeStorageSync('draft_route') } catch (e) {}
           if (that.mapCtx) that.mapCtx.moveToLocation()
         }
       }
@@ -869,6 +895,7 @@ Page({
     this.setData({ pointTimes: times })
     this.renderMap()
     this.setData({ showFoodPanel: false, foodResults: [] })
+    this._persistDraft()
     wx.showToast({ title: '已添加 ' + food.name, icon: 'success' })
   },
 
@@ -883,5 +910,121 @@ Page({
 
   onSavedClose: function() {
     this.toggleSavedPanel()
+  },
+
+  copyItinerary: function() {
+    var pts = this.data.points
+    if (pts.length === 0) {
+      wx.showToast({ title: '请先添加途经点', icon: 'none' })
+      return
+    }
+    var times = this.data.pointTimes
+    var lines = []
+    lines.push('【旅行路线】' + (this.data.cityName ? this.data.cityName + ' · ' : '') + pts.length + '个地点')
+    pts.forEach(function(p, i) {
+      var t = times[i] ? times[i] + ' ' : ''
+      lines.push((i + 1) + '. ' + t + (p.title || '未命名地点'))
+    })
+    if (this.data.routeTimeText) {
+      lines.push('预计用时：' + this.data.routeTimeText.replace(/^至少约\s*/, '').replace(/\s*·\s*\d+\s*个路段$/, ''))
+    }
+    wx.setClipboardData({
+      data: lines.join('\n'),
+      success: function() { wx.showToast({ title: '行程已复制', icon: 'success' }) }
+    })
+  },
+
+  startTrip: function() {
+    if (this.data.points.length < 2) {
+      wx.showToast({ title: '至少需要 2 个途经点', icon: 'none' })
+      return
+    }
+    this.setData({ tripMode: true, tripIdx: 0, pointsHidden: false })
+    this._tripFetch()
+  },
+
+  _tripFetch: function() {
+    var idx = this.data.tripIdx
+    var pts = this.data.points
+    if (idx >= pts.length - 1) return
+    var that = this
+    var origin = { lng: pts[idx].longitude, lat: pts[idx].latitude }
+    var dest = { lng: pts[idx + 1].longitude, lat: pts[idx + 1].latitude }
+    this.setData({ tripInfo: '路线规划中...' })
+    gaode.transitRoute(origin, dest, this.data.cityName || '').then(function(data) {
+      var transits = (data.route && data.route.transits) || []
+      if (transits.length === 0) {
+        that.setData({ tripInfo: '未找到公交路线' })
+        return
+      }
+      var minDur = Infinity
+      var walkingM = 0
+      transits.forEach(function(t) {
+        var dur = parseInt(t.duration) || 0
+        if (dur > 0 && dur < minDur) minDur = dur
+        if (!walkingM) walkingM = parseInt(t.walking_distance) || 0
+      })
+      var mins = Math.round(minDur / 60)
+      that.setData({ tripInfo: '约 ' + mins + ' 分钟' + (walkingM > 0 ? ' · 步行 ' + Math.round(walkingM / 100) / 10 + ' 公里' : '') })
+
+      var coords = []
+      var segs = transits[0].segments || []
+      segs.forEach(function(seg) {
+        if (seg.walking && seg.walking.steps) {
+          seg.walking.steps.forEach(function(step) {
+            if (step.polyline) coords = coords.concat(gaode.decodePolyline(step.polyline))
+          })
+        }
+        if (seg.bus && seg.bus.buslines && seg.bus.buslines.length > 0) {
+          var fl = seg.bus.buslines[0]
+          if (fl && fl.polyline) coords = coords.concat(gaode.decodePolyline(fl.polyline))
+        }
+      })
+      var tripMarkers = [
+        { id: 0, latitude: pts[idx].latitude, longitude: pts[idx].longitude, width: 30, height: 30,
+          callout: { content: '📍 ' + pts[idx].title, display: 'ALWAYS', borderRadius: 4, padding: 6, bgColor: '#07c160' } },
+        { id: 1, latitude: pts[idx + 1].latitude, longitude: pts[idx + 1].longitude, width: 30, height: 30,
+          callout: { content: '下一站 ' + pts[idx + 1].title, display: 'ALWAYS', borderRadius: 4, padding: 6, bgColor: '#1989fa' } }
+      ]
+      that.setData({
+        markers: tripMarkers,
+        polyline: [{
+          points: coords.length > 0 ? coords : [
+            { latitude: pts[idx].latitude, longitude: pts[idx].longitude },
+            { latitude: pts[idx + 1].latitude, longitude: pts[idx + 1].longitude }
+          ],
+          color: '#1989fa', width: 6, arrowLine: true, borderColor: '#ffffff', borderWidth: 2
+        }],
+        latitude: (pts[idx].latitude + pts[idx + 1].latitude) / 2,
+        longitude: (pts[idx].longitude + pts[idx + 1].longitude) / 2
+      })
+      if (that.mapCtx) {
+        var allPts = [
+          { latitude: pts[idx].latitude, longitude: pts[idx].longitude },
+          { latitude: pts[idx + 1].latitude, longitude: pts[idx + 1].longitude }
+        ]
+        that.mapCtx.includePoints({ points: allPts.concat(coords), padding: [40, 40, 40, 40] })
+      }
+    }).catch(function(e) {
+      console.error('[trip fetch]', e)
+      that.setData({ tripInfo: '路线获取失败' })
+    })
+  },
+
+  tripArrive: function() {
+    var idx = this.data.tripIdx
+    var pts = this.data.points
+    if (idx >= pts.length - 2) {
+      wx.showToast({ title: '🎉 行程完成！', icon: 'success' })
+      this.exitTrip()
+      return
+    }
+    var that = this
+    this.setData({ tripIdx: idx + 1 }, function() { that._tripFetch() })
+  },
+
+  exitTrip: function() {
+    this.setData({ tripMode: false, tripIdx: 0, tripInfo: '' })
+    this.renderMap()
   }
 })

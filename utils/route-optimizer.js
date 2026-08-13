@@ -1,36 +1,3 @@
-var common = require('./common')
-
-function haversine(lat1, lng1, lat2, lng2) {
-  return common.haversine(lat1, lng1, lat2, lng2)
-}
-
-function nearestNeighbor(points) {
-  var n = points.length
-  if (n < 3) return points.slice()
-
-  var visited = {}
-  visited[0] = true
-  var result = [points[0]]
-  var current = points[0]
-
-  while (result.length < n - 1) {
-    var best = -1
-    var bestDist = Infinity
-    for (var i = 1; i < n - 1; i++) {
-      if (visited[i]) continue
-      var d = haversine(current.latitude, current.longitude, points[i].latitude, points[i].longitude)
-      if (d < bestDist) { bestDist = d; best = i }
-    }
-    if (best < 0) break
-    visited[best] = true
-    result.push(points[best])
-    current = points[best]
-  }
-
-  result.push(points[n - 1])
-  return result
-}
-
 function parseBounds(bounds) {
   if (!bounds || typeof bounds !== 'string') return null
   var out = []
@@ -60,6 +27,5 @@ function parseBounds(bounds) {
 }
 
 module.exports = {
-  nearestNeighbor: nearestNeighbor,
   parseBounds: parseBounds
 }
