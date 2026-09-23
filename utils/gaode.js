@@ -4,10 +4,21 @@ try { config = require('./config') } catch (e) { config = require('./config.exam
 var PROXY = config.proxyUrl
 var TOKEN = config.proxyToken
 
+function validateProxyConfig(proxy, token) {
+  if (!proxy || proxy.indexOf('your-proxy-url') !== -1 || !/^https:\/\/[A-Za-z0-9.-]+(?::\d{2,5})?(?:\/[^\s]*)?$/.test(proxy)) {
+    return '请先在 utils/config.js 中配置有效的 HTTPS 代理地址'
+  }
+  if (!token || token.length < 24 || /^(?:your|replace)-/i.test(token)) {
+    return '请先在 utils/config.js 中配置至少 24 个字符的代理令牌'
+  }
+  return ''
+}
+
 function callGaode(type, params) {
   return new Promise(function(resolve, reject) {
-    if (!PROXY || PROXY.indexOf('your-proxy-url') !== -1) {
-      reject(new Error('请先在 utils/config.js 中配置高德代理地址'))
+    var configError = validateProxyConfig(PROXY, TOKEN)
+    if (configError) {
+      reject(new Error(configError))
       return
     }
     wx.request({
@@ -68,6 +79,13 @@ function transitRoute(origin, destination, city) {
   })
 }
 
+function weatherForecast(latitude, longitude) {
+  return callGaode('weather_forecast', {
+    latitude: latitude,
+    longitude: longitude
+  })
+}
+
 function decodePolyline(str) {
   if (!str || typeof str !== 'string') return []
   return str.split(';').map(function(pair) {
@@ -88,5 +106,7 @@ module.exports = {
   inputTips: inputTips,
   walkingRoute: walkingRoute,
   transitRoute: transitRoute,
-  decodePolyline: decodePolyline
+  weatherForecast: weatherForecast,
+  decodePolyline: decodePolyline,
+  _validateProxyConfig: validateProxyConfig
 }

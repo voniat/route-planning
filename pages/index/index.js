@@ -5,6 +5,8 @@ var cities = require('../../utils/cities')
 var optimizer = require('../../utils/route-optimizer')
 var shareCard = require('../../utils/share-card-renderer')
 var routeData = require('../../utils/route-data')
+var weatherService = require('../../utils/weather')
+var schedule = require('../../utils/schedule')
 
 var MAX_POINTS = 20
 
@@ -41,6 +43,11 @@ Page({
     showSavedPanel: false,
     showPrivacy: false,
     routeTimeText: '',
+    segmentTimes: [],
+    weatherData: null,
+    weatherLoading: false,
+    weatherError: '',
+    weatherExpanded: false,
     pointsHidden: false,
     shareCanvasH: 0,
     tripMode: false,
@@ -52,6 +59,7 @@ Page({
     this._segmentRouteCache = {}
     this._routeFetchId = 0
     this._tripFetchId = 0
+    this._weatherRequestId = 0
     var app = getApp()
     if (app.globalData.showPrivacy) {
       this.setData({ showPrivacy: true })
@@ -61,6 +69,7 @@ Page({
     var provList = cities.PROVINCE_DATA.map(function(p) { return p.prov })
     var citySubList = cities.PROVINCE_DATA[1].cities
     this.setData({ provList: provList, citySubList: citySubList })
+    this._fetchWeather(this.data.latitude, this.data.longitude)
     this.getUserLocation()
     this.loadSavedRoutes()
     if (options && options.share) {
@@ -151,6 +160,7 @@ Page({
     wx.getLocation({
       type: 'wgs84',
       success: function(res) {
+        that._fetchWeather(res.latitude, res.longitude)
         var points = store.get('selectedPoints') || []
         if (points.length === 0) {
           that.setData({ latitude: res.latitude, longitude: res.longitude })
@@ -210,6 +220,7 @@ Page({
   },
 
   syncCityFromPoint: function(point) {
+    this._fetchWeather(point.latitude, point.longitude)
     var that = this
     gaode.regeocode(point.longitude, point.latitude).then(function(data) {
       var addr = data.regeocode || {}
@@ -230,11 +241,40 @@ Page({
     }).catch(function(e) { console.error('[regeocode city]', e) })
   },
 
+  _fetchWeather: function(latitude, longitude) {
+    if (!routeData.isValidCoordinate(latitude, longitude)) return
+    this._weatherCoords = { latitude: latitude, longitude: longitude }
+    var requestId = ++this._weatherRequestId
+    var that = this
+    this.setData({ weatherData: null, weatherLoading: true, weatherError: '', weatherExpanded: false })
+    weatherService.getForecast(latitude, longitude).then(function(data) {
+      if (that._weatherRequestId !== requestId) return
+      that.setData({ weatherData: data, weatherLoading: false, weatherError: '' })
+    }).catch(function(err) {
+      if (that._weatherRequestId !== requestId) return
+      console.error('[weather forecast]', err)
+      that.setData({
+        weatherLoading: false,
+        weatherError: err && err.message ? err.message : '天气获取失败'
+      })
+    })
+  },
+
+  retryWeather: function() {
+    var coords = this._weatherCoords || { latitude: this.data.latitude, longitude: this.data.longitude }
+    this._fetchWeather(coords.latitude, coords.longitude)
+  },
+
+  toggleWeather: function() {
+    if (!this.data.weatherData) return
+    this.setData({ weatherExpanded: !this.data.weatherExpanded })
+  },
+
   renderMap: function() {
     this._routeFetchId += 1
     var points = this.data.points
     if (points.length === 0) {
-      this.setData({ markers: [], polyline: null, routeTimeText: '', polygons: [] })
+      this.setData({ markers: [], polyline: null, routeTimeText: '', segmentTimes: [], polygons: [] })
       return
     }
 
@@ -271,13 +311,13 @@ Page({
     if (points.length >= 2) {
       this.fetchRoutePolylines(points, this._routeFetchId)
     } else {
-      this.setData({ polyline: null, routeTimeText: '' })
+      this.setData({ polyline: null, routeTimeText: '', segmentTimes: [] })
     }
   },
 
   fetchRoutePolylines: function(points, fetchId) {
     var that = this
-    that.setData({ routeTimeText: '计算中...' })
+    that.setData({ routeTimeText: '计算中...', segmentTimes: [] })
     var city = this.data.cityName || ''
 
     function segmentPromise(origin, dest) {
@@ -366,7 +406,7 @@ Page({
         totalSeconds += r.duration
       })
       if (successCount === 0) {
-        that.setData({ routeTimeText: '路线计算失败，请重试', polyline: null })
+        that.setData({ routeTimeText: '路线计算失败，请重试', segmentTimes: segmentTimes, polyline: null })
         return
       }
       var hours = Math.floor(totalSeconds / 3600)
@@ -375,7 +415,10 @@ Page({
       if (hours > 0) timeText += hours + '小时 '
       timeText += mins + ' 分钟'
       var prefix = successCount < results.length ? '部分路段约 ' : '公交约 '
-      that.setData({ routeTimeText: prefix + timeText + ' · ' + successCount + '/' + segmentTimes.length + ' 个路段' })
+      that.setData({
+        routeTimeText: prefix + timeText + ' · ' + successCount + '/' + segmentTimes.length + ' 个路段',
+        segmentTimes: segmentTimes
+      })
       var SEG_COLORS = [
         '#e64340', '#1989fa', '#ff8833', '#07c160',
         '#e040fb', '#00bcd4', '#ffab00', '#536dfe',
@@ -584,22 +627,17 @@ Page({
   autoFillTimes: function() {
     var points = this.data.points
     if (points.length < 2) return
-    var times = this.data.pointTimes.slice()
-    if (!times[0]) times[0] = '09:00'
-    var base = times[0].split(':')
-    var h = parseInt(base[0]), m = parseInt(base[1])
-    for (var i = 0; i < points.length; i++) {
-      if (!times[i]) {
-        var th = h, tm = m
-        if (tm >= 60) { th += 1; tm -= 60 }
-        th = th % 24
-        times[i] = (th < 10 ? '0' : '') + th + ':' + (tm < 10 ? '0' : '') + tm
-      }
-      h += 1
-      if (h >= 24) h = h % 24
+    if (this.data.routeTimeText === '计算中...') {
+      wx.showToast({ title: '路线仍在计算，请稍候', icon: 'none' })
+      return
     }
-    this.setData({ pointTimes: times })
+    var result = schedule.buildSchedule(this.data.pointTimes[0] || '09:00', this.data.segmentTimes, points.length, 60)
+    this.setData({ pointTimes: result.times })
     this._persistDraft()
+    wx.showToast({
+      title: result.usedFallback ? '部分路段按 60 分钟估算' : '已按路程填充',
+      icon: 'none'
+    })
   },
 
   removePointByIdx: function(idx) {
@@ -675,6 +713,7 @@ Page({
       scale: isNational ? 4 : 11, showCityPanel: false
     })
     store.set('currentCity', isNational ? '' : cityName)
+    this._fetchWeather(coords.lat, coords.lng)
   },
 
   goRoutes: function() {
@@ -853,7 +892,7 @@ Page({
     this.setData({ showPrivacy: false })
     app.globalData.showPrivacy = false
     if (app._privacyResolve) {
-      app._privacyResolve({ buttonId: 'agree', event: 'agree' })
+      app._privacyResolve({ event: 'agree' })
       app._privacyResolve = null
     }
   },
@@ -863,7 +902,7 @@ Page({
     this.setData({ showPrivacy: false })
     app.globalData.showPrivacy = false
     if (app._privacyResolve) {
-      app._privacyResolve({ buttonId: 'disagree', event: 'disagree' })
+      app._privacyResolve({ event: 'disagree' })
       app._privacyResolve = null
     }
     wx.showModal({
