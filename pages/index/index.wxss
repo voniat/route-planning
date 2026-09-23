@@ -99,7 +99,7 @@ page { height: 100%; background: #edf0f5; }
 .point-del:active { background: rgba(230,67,64,0.1); color: #e64340; }
 
 .bottom-actions {
-  position: fixed; bottom: 32rpx; left: 24rpx; right: 24rpx;
+  position: fixed; bottom: calc(32rpx + env(safe-area-inset-bottom)); left: 24rpx; right: 24rpx;
   display: flex; gap: 16rpx; flex-wrap: wrap;
   padding: 8rpx 0;
 }
@@ -139,14 +139,14 @@ page { height: 100%; background: #edf0f5; }
 }
 
 .toolbar-row {
-  position: fixed; top: 112rpx; left: 20rpx; z-index: 10;
-  display: flex; gap: 12rpx;
+  position: fixed; top: 112rpx; left: 20rpx; right: 20rpx; z-index: 10;
+  display: flex; gap: 12rpx; flex-wrap: wrap;
 }
 .toolbar-btn {
-  padding: 14rpx 24rpx; border-radius: 32rpx; font-size: 24rpx;
+  flex: 1 1 280rpx; padding: 12rpx 16rpx; border-radius: 32rpx; font-size: 22rpx;
   background: rgba(255,255,255,0.92); color: #1989fa;
   box-shadow: 0 4rpx 16rpx rgba(0,0,0,0.1);
-  font-weight: 600; letter-spacing: 1rpx;
+  font-weight: 600; letter-spacing: 1rpx; text-align: center;
   border: 1rpx solid rgba(25,137,250,0.15);
 }
 
@@ -264,7 +264,7 @@ page { height: 100%; background: #edf0f5; }
 }
 
 .trip-panel {
-  position: fixed; left: 24rpx; right: 24rpx; bottom: 32rpx;
+  position: fixed; left: 24rpx; right: 24rpx; bottom: calc(32rpx + env(safe-area-inset-bottom));
   background: rgba(255,255,255,0.97); border-radius: 24rpx;
   padding: 28rpx 32rpx; z-index: 30;
   box-shadow: 0 12rpx 40rpx rgba(0,0,0,0.18);

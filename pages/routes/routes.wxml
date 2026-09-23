@@ -1,7 +1,7 @@
 <view class="routes-page">
   <view class="segment-selector" wx:if="{{segments.length > 0}}">
     <scroll-view scroll-x class="segment-scroll" enhanced show-scrollbar="{{false}}">
-      <view class="segment-tab {{segIdx === index ? 'active' : ''}}" wx:for="{{segments}}" wx:key="*this" bindtap="switchSegment" data-index="{{index}}">
+      <view class="segment-tab {{segIdx === index ? 'active' : ''}}" wx:for="{{segments}}" wx:key="id" bindtap="switchSegment" data-index="{{index}}">
         <view class="seg-from">{{item.from}}</view>
         <view class="seg-arrow">→</view>
         <view class="seg-to">{{item.to}}</view>
@@ -23,7 +23,7 @@
     <view
       class="scheme-tab {{transitSchemeIdx === index ? 'active' : ''}}"
       wx:for="{{allTransits}}"
-      wx:key="*this"
+      wx:key="id"
       bindtap="switchTransitScheme"
       data-index="{{index}}"
     >
@@ -55,7 +55,7 @@
       </view>
 
       <view class="step-list">
-        <view class="step-item {{item.mode === 'TRANSIT' ? 'transit-step' : ''}}" wx:for="{{routeData.steps}}" wx:key="index">
+        <view class="step-item {{item.mode === 'TRANSIT' ? 'transit-step' : ''}}" wx:for="{{routeData.steps}}" wx:key="_key">
           <view class="step-line">
             <view class="step-dot" style="background:{{item.mode === 'TRANSIT' ? (item.lineColor || '#1989fa') : '#1989fa'}}"></view>
             <view class="step-line-bar" wx:if="{{index < routeData.steps.length - 1}}"></view>
@@ -80,7 +80,7 @@
                 {{item.altExpanded ? '▾ 收起' : '▸ 还有' + item.altLines.length + '条并行线路'}}
               </view>
               <view class="alt-list" wx:if="{{item.altExpanded && item.altLines.length > 0}}">
-                <view class="alt-item" wx:for="{{item.altLines}}" wx:key="name" wx:for-item="alt">
+                <view class="alt-item" wx:for="{{item.altLines}}" wx:key="_key" wx:for-item="alt">
                   <text class="alt-name">{{alt.name}}</text>
                   <text class="alt-station" wx:if="{{alt.from && alt.to}}">{{alt.from}} → {{alt.to}}</text>
                 </view>

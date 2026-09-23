@@ -9,6 +9,11 @@ App({
       wx.onNeedPrivacyAuthorization(function(resolve) {
         app._privacyResolve = resolve
         app.globalData.showPrivacy = true
+        var pages = getCurrentPages()
+        var currentPage = pages && pages.length ? pages[pages.length - 1] : null
+        if (currentPage && currentPage.setData && currentPage.data && currentPage.data.showPrivacy !== undefined) {
+          currentPage.setData({ showPrivacy: true })
+        }
       })
     }
   },

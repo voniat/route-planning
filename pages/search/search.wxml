@@ -41,7 +41,7 @@
     <view
       class="suggestion-item"
       wx:for="{{suggestions}}"
-      wx:key="id"
+      wx:key="_key"
       bindtap="selectSuggestion"
       data-name="{{item.name}}"
     >

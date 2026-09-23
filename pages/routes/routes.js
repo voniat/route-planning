@@ -7,11 +7,12 @@ var LINE_COLORS = [
 var WALK_COLOR = '#1989fa'
 
 function buildAllTransits(transits) {
-  return (transits || []).map(function(t) {
+  return (transits || []).map(function(t, index) {
     var c = t.cost
     if (c === undefined || c === null || c === '') c = null
     else c = Number(c)
-    return { cost: c, distance: t.distance, duration: t.duration }
+    if (c !== null && !isFinite(c)) c = null
+    return { id: 'scheme-' + index, cost: c, distance: t.distance, duration: t.duration }
   })
 }
 
@@ -76,11 +77,14 @@ Page({
 
   onLoad: function() {
     this._routeCache = {}
+    this._transitRoutes = {}
+    this._routeFetchId = 0
     this.routeMapCtx = wx.createMapContext('routeMap', this)
     var points = store.get('selectedPoints') || []
     var segments = []
     for (var i = 0; i < points.length - 1; i++) {
       segments.push({
+        id: 'segment-' + i,
         from: points[i].title,
         to: points[i + 1].title,
         fromLat: points[i].latitude,
@@ -96,7 +100,7 @@ Page({
   },
 
   switchSegment: function(e) {
-    var idx = e.currentTarget.dataset.index
+    var idx = parseInt(e.currentTarget.dataset.index)
     this.setData({ segIdx: idx })
     this.loadRoute(idx)
   },
@@ -110,52 +114,51 @@ Page({
   switchTransitScheme: function(e) {
     var idx = parseInt(e.currentTarget.dataset.index)
     var tab = this.data.activeTab
-    if (tab !== 'transit' || idx >= this.data.allTransits.length) return
-    this.setData({ transitSchemeIdx: idx })
-
+    if (tab !== 'transit' || idx < 0 || idx >= this.data.allTransits.length) return
     var seg = this.data.segments[this.data.segIdx]
     if (!seg) return
-    var origin = { lng: seg.fromLng, lat: seg.fromLat }
-    var dest = { lng: seg.toLng, lat: seg.toLat }
+    var transits = this._transitRoutes[this.data.segIdx] || []
+    var transit = transits[idx]
+    if (!transit) {
+      wx.showToast({ title: '方案不可用，请重新进入页面', icon: 'none' })
+      return
+    }
+
+    this._routeFetchId += 1
     var that = this
-    this.setData({ loading: true, routeData: null })
-    gaode.transitRoute(origin, dest, store.get('currentCity') || '').then(function(data) {
-      that.setData({ loading: false })
-      var route = data.route
-      if (!route || !route.transits || !route.transits[idx]) {
-        wx.showToast({ title: '方案不可用', icon: 'none' })
-        return
+    transit.segments.forEach(function(s) { s._from = seg.from; s._to = seg.to })
+    var lineColorMap = buildLineColorMap(transit.segments)
+    var routeData = {
+      steps: this.parseTransitSteps(transit, lineColorMap),
+      distance: (parseFloat(transit.distance || 0) / 1000).toFixed(1),
+      duration: Math.round(parseFloat(transit.duration || 0) / 60),
+      cost: transit.cost || 0
+    }
+    var polylines = this.buildTransitPolylines(transit, lineColorMap)
+    this.setData({
+      transitSchemeIdx: idx,
+      routeData: routeData,
+      polyline: polylines
+    }, function() {
+      var cacheKey = that.data.segIdx + '_transit'
+      if (that._routeCache[cacheKey]) {
+        that._routeCache[cacheKey].routeData = routeData
+        that._routeCache[cacheKey].polyline = polylines
+        that._routeCache[cacheKey].transitSchemeIdx = idx
       }
-      var transit = route.transits[idx]
-      that.setData({ allTransits: buildAllTransits(route.transits) })
-      transit.segments.forEach(function(s) { s._from = seg.from; s._to = seg.to })
-      var lineColorMap = buildLineColorMap(transit.segments)
-      var steps = that.parseTransitSteps(transit, lineColorMap)
-      var polylines = that.buildTransitPolylines(transit, lineColorMap)
-      that.setData({
-        routeData: {
-          steps: steps,
-          distance: (parseFloat(transit.distance || 0) / 1000).toFixed(1),
-          duration: Math.round(parseFloat(transit.duration || 0) / 60),
-          cost: transit.cost || 0
-        },
-        polyline: polylines
-      }, function() {
-        var allPts = [{ latitude: seg.fromLat, longitude: seg.fromLng }, { latitude: seg.toLat, longitude: seg.toLng }]
-        polylines.forEach(function(pl) {
-          if (pl.points && pl.points.length) allPts = allPts.concat(pl.points)
-        })
-        if (that.routeMapCtx) {
-          that.routeMapCtx.includePoints({ points: allPts, padding: [40, 40, 40, 40] })
-        }
+      var allPts = [{ latitude: seg.fromLat, longitude: seg.fromLng }, { latitude: seg.toLat, longitude: seg.toLng }]
+      polylines.forEach(function(pl) {
+        if (pl.points && pl.points.length) allPts = allPts.concat(pl.points)
       })
-    }).catch(function(err) {
-      that.setData({ loading: false })
-      wx.showToast({ title: '切换失败', icon: 'none' })
+      if (that.routeMapCtx) {
+        that.routeMapCtx.includePoints({ points: allPts, padding: [40, 40, 40, 40] })
+      }
     })
   },
 
   loadRoute: function(idx) {
+    this._routeFetchId += 1
+    var fetchId = this._routeFetchId
     var seg = this.data.segments[idx]
     if (!seg) return
 
@@ -186,8 +189,6 @@ Page({
     }
 
     var that = this
-    var fetchId = Date.now()
-    this._routeFetchId = fetchId
     promise.then(function(data) {
       if (that._routeFetchId !== fetchId) return
       that.setData({ loading: false })
@@ -209,6 +210,7 @@ Page({
 
       var routeData = {}
       if (tab === 'transit' && route.transits) {
+        that._transitRoutes[idx] = route.transits
         var allTransits = buildAllTransits(route.transits)
         var transit = route.transits[0]
         transit.segments.forEach(function(s) {
@@ -226,8 +228,9 @@ Page({
         that.setData({ allTransits: allTransits, transitSchemeIdx: 0 })
       } else if (route.steps) {
         routeData = {
-          steps: route.steps.map(function(s) {
+          steps: route.steps.map(function(s, stepIndex) {
             return {
+              _key: 'walk-' + stepIndex,
               instruction: s.instruction || '',
               distance: parseInt(s.distance) || 0,
               duration: Math.round((parseInt(s.duration) || 0) / 60)
@@ -295,6 +298,7 @@ Page({
         }
       })
     }).catch(function(err) {
+      if (that._routeFetchId !== fetchId) return
       that.setData({ loading: false })
       wx.showToast({ title: err.message || '路线规划失败', icon: 'none' })
     })
@@ -333,7 +337,7 @@ Page({
     var that = this
     segs.forEach(function(seg, segIdx) {
       if (seg.walking) steps.push(that._buildWalkingStep(seg, segs, segIdx))
-      if (seg.bus && seg.bus.buslines && seg.bus.buslines.length > 0) steps.push(that._buildBusStep(seg.bus, lineColorMap))
+      if (seg.bus && seg.bus.buslines && seg.bus.buslines.length > 0) steps.push(that._buildBusStep(seg.bus, lineColorMap, segIdx))
     })
     return steps
   },
@@ -355,6 +359,7 @@ Page({
       toName = seg._to || '终点'
     }
     return {
+      _key: 'walk-' + segIdx,
       mode: 'WALKING',
       instruction: seg.walking.instruction || '步行前往',
       distance: parseInt(seg.walking.distance) || 0,
@@ -366,7 +371,7 @@ Page({
     }
   },
 
-  _buildBusStep: function(bus, lineColorMap) {
+  _buildBusStep: function(bus, lineColorMap, segIdx) {
     var mainLine = bus.buslines[0]
     var typeTag = mainLine.type || ''
     var isMetro = typeTag.indexOf('地铁') !== -1 || typeTag.indexOf('SUBWAY') !== -1
@@ -378,6 +383,7 @@ Page({
     for (var k = 1; k < bus.buslines.length; k++) {
       var ol = bus.buslines[k]
       others.push({
+        _key: 'alt-' + segIdx + '-' + k,
         name: ol.name,
         from: (ol.departure_stop && ol.departure_stop.name) || '',
         to: (ol.arrival_stop && ol.arrival_stop.name) || ''
@@ -385,6 +391,7 @@ Page({
     }
     var lc = (lineColorMap && lineColorMap[mainLine.name]) || '#1989fa'
     return {
+      _key: 'bus-' + segIdx,
       mode: 'TRANSIT',
       instruction: '乘坐 ' + mainLine.name,
       distance: parseInt(mainLine.distance) || 0,

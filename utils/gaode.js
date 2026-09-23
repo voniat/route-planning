@@ -6,6 +6,10 @@ var TOKEN = config.proxyToken
 
 function callGaode(type, params) {
   return new Promise(function(resolve, reject) {
+    if (!PROXY || PROXY.indexOf('your-proxy-url') !== -1) {
+      reject(new Error('请先在 utils/config.js 中配置高德代理地址'))
+      return
+    }
     wx.request({
       url: PROXY,
       method: 'POST',
@@ -16,10 +20,12 @@ function callGaode(type, params) {
       },
       data: { type: type, params: params },
       success: function(res) {
-        if (res.statusCode === 200 && res.data.code === 0) {
-          resolve(res.data.data)
+        var body = res && res.data && typeof res.data === 'object' ? res.data : {}
+        if (res.statusCode === 200 && body.code === 0) {
+          resolve(body.data || {})
         } else {
-          reject(new Error(res.data && res.data.error ? res.data.error : '请求失败'))
+          var message = body.error || body.message || ('请求失败（HTTP ' + (res.statusCode || 0) + '）')
+          reject(new Error(message))
         }
       },
       fail: function(err) { reject(err) }
@@ -37,20 +43,14 @@ function poiSearch(keywords, city) {
   return callGaode('poi_search', params)
 }
 
-function poiAround(lng, lat, keywords, radius) {
-  return callGaode('poi_around', {
-    location: lng + ',' + lat,
-    keywords: keywords || '',
-    radius: radius || 5000
-  })
-}
-
 function poiDetail(id) {
   return callGaode('poi_detail', { id: id })
 }
 
-function inputTips(keywords) {
-  return callGaode('input_tips', { keywords: keywords })
+function inputTips(keywords, city) {
+  var params = { keywords: keywords }
+  if (city) params.city = city
+  return callGaode('input_tips', params)
 }
 
 function walkingRoute(origin, destination) {
@@ -84,7 +84,6 @@ function decodePolyline(str) {
 module.exports = {
   regeocode: regeocode,
   poiSearch: poiSearch,
-  poiAround: poiAround,
   poiDetail: poiDetail,
   inputTips: inputTips,
   walkingRoute: walkingRoute,

@@ -92,7 +92,7 @@
 
 <view class="toolbar-row" wx:if="{{!sorting && !tripMode}}">
   <view class="toolbar-btn" bindtap="togglePoints">
-    <text>{{pointsHidden ? '📋 显示途径点' : '📋 隐藏途径点'}}</text>
+    <text>{{pointsHidden ? '📋 显示途经点' : '📋 隐藏途经点'}}</text>
   </view>
   <view class="toolbar-btn" bindtap="copyItinerary">
     <text>📋 复制行程</text>
@@ -172,14 +172,6 @@
     </picker-view>
   </view>
 </view>
-
-<food-panel
-  foodResults="{{foodResults}}"
-  foodLoading="{{foodLoading}}"
-  showFoodPanel="{{showFoodPanel}}"
-  bind:close="closeFoodPanel"
-  bind:add="onFoodAdd"
-/>
 
 <privacy-modal show="{{showPrivacy}}" bind:agree="agreePrivacy" bind:disagree="disagreePrivacy" />
 

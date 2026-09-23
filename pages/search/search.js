@@ -2,6 +2,7 @@ var store = require('../../utils/store')
 var common = require('../../utils/common')
 var gaode = require('../../utils/gaode')
 var cities = require('../../utils/cities')
+var routeData = require('../../utils/route-data')
 var MAX_POINTS = 20
 
 function detectCity(kw) {
@@ -14,9 +15,11 @@ function detectCity(kw) {
   return ''
 }
 
-function doSearchRequest(ctx, kw) {
+function doSearchRequest(ctx, kw, requestId) {
   var city = detectCity(kw) || (store.get('currentCity') || '')
   gaode.poiSearch(kw, city).then(function(data) {
+    if (ctx._searchRequestId !== requestId) return
+    ctx._searching = false
     wx.hideLoading()
     var added = store.get('selectedPoints') || []
     var pois = data.pois || data.poi_list || data.results || data.list || []
@@ -33,6 +36,8 @@ function doSearchRequest(ctx, kw) {
 
     ctx.setData({ results: results, searched: true })
   }).catch(function(err) {
+    if (ctx._searchRequestId !== requestId) return
+    ctx._searching = false
     wx.hideLoading()
     wx.showToast({ title: err.message || '搜索失败', icon: 'none' })
   })
@@ -43,8 +48,9 @@ function cleanResults(rawList, added) {
   var results = []
   rawList.forEach(function(item, i) {
     var loc = (item.location || '').split(',')
-    var lat = parseFloat(loc[1]) || 0
-    var lng = parseFloat(loc[0]) || 0
+    var lat = parseFloat(loc[1])
+    var lng = parseFloat(loc[0])
+    if (!routeData.isValidCoordinate(lat, lng)) return
     var key = lat.toFixed(5) + ',' + lng.toFixed(5)
     if (seen[key]) return
     seen[key] = true
@@ -81,6 +87,8 @@ Page({
   },
 
   onLoad: function(options) {
+    this._suggestRequestId = 0
+    this._searchRequestId = 0
     if (options && options.city && !store.get('currentCity')) {
       store.set('currentCity', decodeURIComponent(options.city))
     }
@@ -105,16 +113,28 @@ Page({
 
   onInput: function(e) {
     var kw = (e.detail.value || '').slice(0, 50)
+    var wasSearching = this._searching
     this._searching = false
+    this._searchRequestId += 1
+    if (wasSearching) wx.hideLoading()
     this.setData({ keyword: kw })
+    this._suggestRequestId += 1
     if (!kw.trim()) { this.setData({ suggestions: [], showSuggestions: false }); return }
     var that = this
+    var requestId = this._suggestRequestId
     clearTimeout(this._inputTimer)
     this._inputTimer = setTimeout(function() {
-      gaode.inputTips(kw).then(function(data) {
-        if (that._searching) return
+      gaode.inputTips(kw, store.get('currentCity') || '').then(function(data) {
+        if (that._searching || that._suggestRequestId !== requestId || that.data.keyword !== kw) return
         var tips = data.tips || []
-        var suggestions = tips.slice(0, 10).map(function(t) { return { name: t.name, district: t.district || '', id: t.id } })
+        var suggestions = tips.filter(function(t) { return t && t.name }).slice(0, 10).map(function(t, index) {
+          return {
+            name: t.name,
+            district: t.district || '',
+            id: t.id || '',
+            _key: (t.id || t.name + '|' + (t.district || '')) + '|' + index
+          }
+        })
         that.setData({ suggestions: suggestions, showSuggestions: suggestions.length > 0 })
       }).catch(function(e) { console.error('[search inputTips]', e) })
     }, 300)
@@ -137,11 +157,14 @@ Page({
     if (!kw) return
     clearTimeout(this._inputTimer)
     this._searching = true
-    this.setData({ suggestions: [], showSuggestions: false })
+    this._suggestRequestId += 1
+    this._searchRequestId += 1
+    var requestId = this._searchRequestId
+    this.setData({ results: [], searched: false, suggestions: [], showSuggestions: false })
     wx.showLoading({ title: '搜索中...' })
     var that = this
     this._saveHistory(kw)
-    doSearchRequest(that, kw)
+    doSearchRequest(that, kw, requestId)
   },
 
   tapHistory: function(e) {
@@ -186,7 +209,7 @@ Page({
     var results = this.data.results
     var idx = -1
     for (var i = 0; i < results.length; i++) {
-      if (results[i].id === id) { idx = i; break }
+      if (String(results[i].id) === String(id)) { idx = i; break }
     }
     if (idx === -1) return
     var item = results[idx]
@@ -198,7 +221,8 @@ Page({
       return
     }
     points.push({
-      id: item.id || Date.now(),
+      id: routeData.createPointId(),
+      poiId: item.id || '',
       title: item.title,
       latitude: item.latitude,
       longitude: item.longitude,
@@ -206,7 +230,9 @@ Page({
       bounds: item.bounds || '',
       typecode: item.typecode || ''
     })
+    points = routeData.normalizePoints(points, MAX_POINTS)
     store.set('selectedPoints', points)
+    this._persistDraftPoints(points)
     var obj = {}
     obj['results[' + idx + '].added'] = true
     this.setData(obj)
@@ -228,17 +254,45 @@ Page({
       that.setData(obj)
       var points = (store.get('selectedPoints') || []).slice()
       for (var i = 0; i < points.length; i++) {
-        if (points[i].id === item.id && !points[i].bounds) {
+        if ((String(points[i].poiId) === String(item.id) || String(points[i].id) === String(item.id)) && !points[i].bounds) {
           points[i].bounds = detail.bounds
           break
         }
       }
       store.set('selectedPoints', points)
+      that._persistDraftPoints(points)
     }).catch(function(e) { console.error('[poi detail]', e) })
   },
 
   clearKeyword: function() {
+    clearTimeout(this._inputTimer)
+    this._suggestRequestId += 1
+    this._searchRequestId += 1
+    if (this._searching) wx.hideLoading()
+    this._searching = false
     this.setData({ keyword: '', results: [], suggestions: [], showSuggestions: false, searched: false })
+  },
+
+  _persistDraftPoints: function(points) {
+    try {
+      var draft = wx.getStorageSync('draft_route') || {}
+      var normalized = routeData.normalizePoints(points, MAX_POINTS)
+      draft.points = normalized
+      draft.times = routeData.normalizeTimes(draft.times, normalized.length)
+      draft.city = store.get('currentCity') || draft.city || ''
+      draft.savedAt = Date.now()
+      wx.setStorageSync('draft_route', draft)
+    } catch (e) {
+      console.error('[search draft save]', e)
+    }
+  },
+
+  onUnload: function() {
+    clearTimeout(this._inputTimer)
+    this._suggestRequestId += 1
+    this._searchRequestId += 1
+    if (this._searching) wx.hideLoading()
+    this._searching = false
   },
 
   chooseLocation: function() {
