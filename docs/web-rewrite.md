@@ -463,6 +463,6 @@ pnpm verify     # tsc --noEmit && vitest run && node scripts/security-check.mjs 
 
 ### 15.12 执行状态
 
-- 2026-10-21：规格与计划已提交（`dbe9db0`、`bdf1c2f`），`main` 领先 `origin/main` 2 个提交；推送因 GH007 待用户处理。
-- Task 1 未开始，工作树干净。阻塞：DSH 网络策略对 `registry.npmjs.org` 返回 403（`npmmirror`/`jsdelivr`/`unpkg` 同样被拒）；本机无 React/Vite，pnpm store 仅有 `typescript`、`@types/react` 等 DSH 依赖。
-- 解除方式：放行 npm registry，或由用户在自己的终端执行 `pnpm install`；安装完成后再执行 Task 1 并跑 `pnpm verify`。
+- 2026-10-21：规格与计划已提交并推送（`dbe9db0`、`bdf1c2f`、`21cbcff`）；GitHub GH007 已由用户修复。
+- Task 1 完成：`pnpm verify` 通过（TypeScript、7 个单测、密钥扫描、`vite build` 222.77 kB / gzip 69.52 kB）。npm registry 通过项目级未跟踪的 `.dsh/rules.yaml` 放行。
+- 下一切片：Task 2 核心纯逻辑与单元测试。

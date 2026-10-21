@@ -2,8 +2,11 @@ utils/config.js
 project.private.config.json
 node_modules/
 coverage/
+dist/
 .env
 .env.*
+!.env.example
+.dsh/
 *.pem
 *.key
 .DS_Store

@@ -1,14 +1,31 @@
 {
-  "name": "route-planning-miniprogram",
-  "version": "1.0.0",
+  "name": "route-planning-web",
+  "version": "2.0.0",
   "private": true,
-  "scripts": {
-    "check": "node scripts/check.js",
-    "test": "node --test test/*.test.js",
-    "security": "node scripts/security-check.js",
-    "verify": "npm run check && npm test && npm run security"
-  },
+  "type": "module",
+  "packageManager": "pnpm@11.20.0",
   "engines": {
-    "node": ">=18"
+    "node": ">=20.19"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "security": "node scripts/security-check.mjs",
+    "verify": "tsc --noEmit && vitest run && node scripts/security-check.mjs && vite build"
+  },
+  "dependencies": {
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1"
+  },
+  "devDependencies": {
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^5.2.0",
+    "typescript": "~5.9.3",
+    "vite": "^7.3.7",
+    "vitest": "^3.2.7"
   }
 }
