@@ -466,4 +466,6 @@ pnpm verify     # tsc --noEmit && vitest run && node scripts/security-check.mjs 
 - 2026-10-21：规格与计划已提交并推送（`dbe9db0`、`bdf1c2f`、`21cbcff`）；GitHub GH007 已由用户修复。
 - Task 1 完成：`pnpm verify` 通过（TypeScript、7 个单测、密钥扫描、`vite build` 222.77 kB / gzip 69.52 kB）。npm registry 通过项目级未跟踪的 `.dsh/rules.yaml` 放行。
 - Task 2 完成：`core/*` 纯逻辑（points/cities/storage/weather/favorites/share）与 39 项单测通过。
-- 下一切片：Task 3 地图、定位、搜索与选点。
+- Task 3 完成（代码）：地图加载/重试、定位、城市选择、搜索与建议、地图选点；`pnpm verify` 通过（构建 257.30 kB / gzip 83.10 kB）。AC2/AC3 待真实高德 Key 手工验收。
+- CI 工作流修复：`32532ef` 去掉重复的 pnpm 版本输入，统一由 `packageManager` 决定。
+- 下一切片：Task 4 途经点列表、排序与草稿。
