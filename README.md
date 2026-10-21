@@ -1,48 +1,63 @@
-# 旅行路线规划
+# 旅行路线规划（Web）
 
-原生微信小程序，用于地图选点、途经点排序、公交/地铁与步行路线查看、行程时间安排、天气查看、收藏和分享。
+浏览器端旅行路线规划：地图选点、途经点排序、公交/地铁与步行路线、7 日天气、本地收藏与草稿、分享链接。无后端，构建产物是纯静态文件。
 
-## 当前功能
+## 功能
 
-- 地图点选、地点搜索、最多 20 个途经点
-- 拖动排序、路线草稿、本地收藏和分享卡片
-- 公交/地铁与步行路线、分段行程模式
-- 根据各路段公交耗时生成到达时间，中途默认停留 1 小时
-- 当前天气与七日预报
-- 微信隐私授权适配
+- 高德地图选点、POI 搜索与输入提示、城市选择
+- 最多 20 个途经点，指针拖拽或键盘排序
+- 公交/地铁多方案、步行路线与地图折线
+- Open-Meteo 当前天气 + 7 日预报
+- localStorage 草稿/收藏/搜索历史；分享链接还原；复制行程文本
+- 桌面与移动端响应式布局
 
-## 架构
+## 技术栈
 
-```text
-微信小程序
-  └─ HTTPS 请求
-      └─ serverless/route-proxy
-          ├─ 高德 Web 服务：地理编码、地点、公交、步行
-          └─ Open-Meteo：天气
-```
-
-高德 Key 只存在云函数环境变量中。小程序端只保存代理地址和可轮换的访问令牌。
+React 19 + TypeScript（strict）+ Vite 7 + Vitest；高德 JS API v2；Open-Meteo。无状态库、无 UI 库、无后端。
 
 ## 本地运行
 
-1. 使用 Node.js 18 或更高版本运行项目检查。
-2. 按 [DEPLOYMENT.md](DEPLOYMENT.md) 部署代理。
-3. 复制 `utils/config.example.js` 为 `utils/config.js`，填写代理 HTTPS 地址和访问令牌。
-4. 在微信开发者工具中导入项目目录，并把 `project.config.json` 中的 `appid` 改为自己的 AppID。个人设置会写入已忽略的 `project.private.config.json`。
-5. 在微信公众平台配置代理域名为 request 合法域名。
-
-## 自动检查
+Node >= 22.13，pnpm 11。
 
 ```bash
-npm run verify
+pnpm install
+cp .env.example .env.local   # Windows: copy .env.example .env.local
+# 填写 VITE_AMAP_KEY 与 VITE_AMAP_SECURITY_CODE
+pnpm dev
 ```
 
-该命令检查 JavaScript 和 JSON、WXML 约束、模板事件绑定、核心业务测试、代理输入边界以及常见密钥泄漏。GitHub Actions 会在提交和拉取请求上运行同一套检查。
+Key 获取、安全密钥与域名白名单见 [DEPLOYMENT.md](DEPLOYMENT.md)。
 
-## 发布
+## 脚本
 
-- [部署与发布清单](DEPLOYMENT.md)
-- [安全说明](SECURITY.md)
-- [代理部署说明](serverless/route-proxy/README.md)
+| 命令 | 用途 |
+| --- | --- |
+| `pnpm dev` | 本地开发服务器 |
+| `pnpm build` | 构建到 `dist/` |
+| `pnpm test` | Vitest 单元测试 |
+| `pnpm verify` | 类型检查 + 单测 + 密钥扫描 + 构建 |
 
-天气数据来自 Open-Meteo，界面中保留了数据来源和 CC BY 4.0 标识。Open-Meteo 免费公共 API 仅供非商业用途；带广告、订阅或商业产品的发布应配置其商业订阅端点和 API Key。正式发布前还需核对高德的当前服务条款和配额。
+`pnpm verify` 是 CI 与发布前的统一检查。
+
+## 目录
+
+```text
+src/core       纯逻辑：坐标/城市/天气解析/收藏/草稿/分享/行程文本
+src/amap       高德 JS API 加载、地图、搜索、地理编码、路线适配
+src/hooks      天气与路线请求状态
+src/components UI 组件
+src/state      planner reducer
+```
+
+## 数据来源
+
+- 高德地图 JS API v2：地图、POI、地理编码、公交与步行路线
+- Open-Meteo：天气；界面保留数据来源与 CC BY 4.0 标识
+
+Open-Meteo 免费公共端点仅供非商业用途；带广告、订阅或商业产品发布时应使用其商业订阅端点和 Key。
+
+## 相关文档
+
+- 重构规格、实施计划与验收记录：[docs/web-rewrite.md](docs/web-rewrite.md)
+- 部署：[DEPLOYMENT.md](DEPLOYMENT.md)
+- 安全：[SECURITY.md](SECURITY.md)

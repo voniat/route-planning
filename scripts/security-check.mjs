@@ -13,8 +13,6 @@ const listed = execFileSync('git', ['ls-files', '-z', '--cached', '--others', '-
 const files = listed.split('\0').filter(Boolean)
 
 const forbidden = [
-  /^utils\/config\.js$/i,
-  /(^|\/)project\.private\.config\.json$/i,
   /(^|\/)\.env$/i,
   /(^|\/)\.env\.(?!example$)[^/]+$/i,
   /\.(?:pem|key|p12|pfx)$/i
