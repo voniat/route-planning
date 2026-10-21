@@ -465,4 +465,5 @@ pnpm verify     # tsc --noEmit && vitest run && node scripts/security-check.mjs 
 
 - 2026-10-21：规格与计划已提交并推送（`dbe9db0`、`bdf1c2f`、`21cbcff`）；GitHub GH007 已由用户修复。
 - Task 1 完成：`pnpm verify` 通过（TypeScript、7 个单测、密钥扫描、`vite build` 222.77 kB / gzip 69.52 kB）。npm registry 通过项目级未跟踪的 `.dsh/rules.yaml` 放行。
-- 下一切片：Task 2 核心纯逻辑与单元测试。
+- Task 2 完成：`core/*` 纯逻辑（points/cities/storage/weather/favorites/share）与 39 项单测通过。
+- 下一切片：Task 3 地图、定位、搜索与选点。
