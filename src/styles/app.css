@@ -1146,6 +1146,11 @@ body {
   background: var(--color-bg);
 }
 
+html,
+body {
+  overflow: hidden;
+}
+
 .app-layout {
   grid-template-columns: clamp(360px, 29vw, 410px) minmax(0, 1fr);
 }
@@ -1520,6 +1525,62 @@ body {
   font-weight: 700;
 }
 
+.weather-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.weather-actions .weather-toggle {
+  margin-left: 0;
+}
+
+.weather-hide {
+  display: none;
+  align-items: center;
+  border: 0;
+  border-radius: 999px;
+  padding: 5px 10px;
+  background: var(--color-surface-soft);
+  color: var(--color-text-muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.weather-hide:hover {
+  background: #f1e6d8;
+  color: var(--color-text);
+}
+
+.weather-bubble {
+  position: fixed;
+  top: 64px;
+  right: 12px;
+  z-index: 40;
+  width: 56px;
+  height: 56px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid var(--color-border-strong);
+  border-radius: 50%;
+  background: rgba(255, 252, 247, 0.96);
+  box-shadow: 0 14px 30px -12px rgba(33, 29, 24, 0.5);
+  font-size: 26px;
+  line-height: 1;
+  touch-action: none;
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.weather-bubble.dragging {
+  cursor: grabbing;
+  transform: scale(1.04);
+}
+
 .weather-toggle:hover {
   background: #f1e6d8;
 }
@@ -1838,6 +1899,11 @@ dialog::backdrop {
 }
 
 @media (max-width: 899px) {
+  .app-layout {
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(0, 1fr) auto;
+  }
+
   .sidebar {
     max-height: 48dvh;
     gap: 0;
@@ -1886,14 +1952,20 @@ dialog::backdrop {
 
   .weather-float {
     top: 62px;
+    left: 12px;
     right: 12px;
-    width: 232px;
+    width: auto;
   }
 
   .weather-card {
+    width: 100%;
     gap: 7px;
     padding: 11px 13px;
     border-radius: 16px;
+  }
+
+  .weather-hide {
+    display: inline-flex;
   }
 
   .weather-icon {
