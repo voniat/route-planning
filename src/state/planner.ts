@@ -9,6 +9,7 @@ export interface PlannerState {
 export type PlannerAction =
   | { type: 'set-city'; city: City }
   | { type: 'add-point'; point: Point }
+  | { type: 'insert-point'; point: Point; index: number }
   | { type: 'remove-point'; id: string }
   | { type: 'move-point'; from: number; to: number }
   | { type: 'replace-points'; points: Point[]; city?: City }
@@ -26,6 +27,13 @@ export function plannerReducer(state: PlannerState, action: PlannerAction): Plan
     case 'add-point':
       if (state.points.length >= MAX_POINTS) return state
       return { ...state, points: [...state.points, action.point] }
+    case 'insert-point': {
+      if (state.points.length >= MAX_POINTS) return state
+      const points = [...state.points]
+      const index = Math.max(0, Math.min(action.index, points.length))
+      points.splice(index, 0, action.point)
+      return { ...state, points }
+    }
     case 'remove-point':
       return { ...state, points: state.points.filter((point) => point.id !== action.id) }
     case 'move-point': {

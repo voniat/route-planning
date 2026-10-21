@@ -74,6 +74,20 @@ async function copyText(text: string): Promise<boolean> {
   }
 }
 
+function locateUser(): Promise<{ lng: number; lat: number }> {
+  return new Promise((resolve, reject) => {
+    if (typeof navigator === 'undefined' || !navigator.geolocation) {
+      reject(new Error('浏览器不支持定位'))
+      return
+    }
+    navigator.geolocation.getCurrentPosition(
+      (position) => resolve({ lng: position.coords.longitude, lat: position.coords.latitude }),
+      () => reject(new Error('未获取定位，请检查浏览器权限')),
+      { enableHighAccuracy: false, timeout: 8000, maximumAge: 600000 }
+    )
+  })
+}
+
 export default function App() {
   const [state, dispatch] = useReducer(plannerReducer, initialPlannerState)
   const persistentStorage = useMemo(() => getBrowserStorage(), [])
@@ -96,9 +110,11 @@ export default function App() {
   const [saveOpen, setSaveOpen] = useState(false)
   const [savedOpen, setSavedOpen] = useState(false)
   const [deleteId, setDeleteId] = useState<number | null>(null)
+  const [pendingLoadId, setPendingLoadId] = useState<number | null>(null)
   const [selectedPointId, setSelectedPointId] = useState<string | null>(null)
   const [manualText, setManualText] = useState<{ title: string; text: string } | null>(null)
   const [toast, setToast] = useState<string | null>(null)
+  const [toastAction, setToastAction] = useState<{ label: string; run: () => void } | null>(null)
   const toastTimer = useRef<number | null>(null)
   const pointsCount = useRef(0)
   const draftLoaded = useRef(false)
@@ -106,11 +122,21 @@ export default function App() {
   const draftFailed = useRef(false)
   const shareApplied = useRef(false)
 
-  const showToast = useCallback((message: string) => {
-    setToast(message)
-    if (toastTimer.current) window.clearTimeout(toastTimer.current)
-    toastTimer.current = window.setTimeout(() => setToast(null), 2600)
-  }, [])
+  const showToast = useCallback(
+    (message: string, action?: { label: string; run: () => void }) => {
+      setToast(message)
+      setToastAction(action ?? null)
+      if (toastTimer.current) window.clearTimeout(toastTimer.current)
+      toastTimer.current = window.setTimeout(
+        () => {
+          setToast(null)
+          setToastAction(null)
+        },
+        action ? 4500 : 2600
+      )
+    },
+    []
+  )
 
   useEffect(() => {
     if (!storagePersistent) {
@@ -248,16 +274,32 @@ export default function App() {
     setFocus({ lng: city.lng, lat: city.lat, zoom: 11, nonce: Date.now() })
   }, [])
 
-  const removePoint = useCallback((id: string) => {
-    dispatch({ type: 'remove-point', id })
-  }, [])
+  const removePoint = useCallback(
+    (id: string) => {
+      const index = state.points.findIndex((point) => point.id === id)
+      if (index < 0) return
+      const removed = state.points[index]
+      dispatch({ type: 'remove-point', id })
+      if (removed) {
+        showToast('已删除途经点', {
+          label: '撤销',
+          run: () => dispatch({ type: 'insert-point', point: removed, index })
+        })
+      }
+    },
+    [state.points, showToast]
+  )
 
   const clearPoints = useCallback(() => {
+    const previousPoints = state.points
     dispatch({ type: 'clear' })
     clearDraft(storage)
     setClearOpen(false)
-    showToast('已清空途经点')
-  }, [storage, showToast])
+    showToast('已清空途经点', {
+      label: '撤销',
+      run: () => dispatch({ type: 'replace-points', points: previousPoints })
+    })
+  }, [state.points, storage, showToast])
 
   const route = useRoutePlans(state.points, state.city, routeOpen, activeSegment, routeMode)
   const routePolylines = useMemo(() => {
@@ -283,6 +325,54 @@ export default function App() {
     },
     [state.points, routeOpen]
   )
+
+  const handleLocate = useCallback(async () => {
+    try {
+      const lngLat = await locateUser()
+      setFocus({ ...lngLat, zoom: 14, nonce: Date.now() })
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : '定位失败')
+    }
+  }, [showToast])
+
+  const handleUseMyLocation = useCallback(async () => {
+    if (state.points.length >= MAX_POINTS) {
+      showToast(`最多添加 ${MAX_POINTS} 个途经点`)
+      return
+    }
+    try {
+      const lngLat = await locateUser()
+      if (isDuplicateCoordinate(state.points, lngLat.lat, lngLat.lng)) {
+        showToast('当前位置已在路线中')
+        return
+      }
+      let address = formatLngLat(lngLat)
+      try {
+        const amap = await loadAmap()
+        const result = await reverseGeocode(amap, lngLat)
+        if (result.address) address = result.address
+      } catch {
+        // 反地理编码失败时使用坐标作为标题。
+      }
+      const point = normalizePoints(
+        [{ title: address, address, lat: lngLat.lat, lng: lngLat.lng }],
+        1
+      )[0]
+      if (!point) {
+        showToast('无效坐标')
+        return
+      }
+      if (state.points.length === 0) {
+        dispatch({ type: 'add-point', point })
+      } else {
+        dispatch({ type: 'replace-points', points: [point, ...state.points] })
+      }
+      setFocus({ ...lngLat, zoom: 14, nonce: Date.now() })
+      showToast('已把当前位置设为起点')
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : '定位失败')
+    }
+  }, [state.points, showToast])
 
   const weather = useWeather(state.city)
 
@@ -314,7 +404,7 @@ export default function App() {
     [favoriteStore, state.points, state.city.name, showToast]
   )
 
-  const loadSavedRoute = useCallback(
+  const applyLoadSavedRoute = useCallback(
     (id: number) => {
       const saved = favoriteStore.getById(id)
       if (!saved) {
@@ -339,6 +429,23 @@ export default function App() {
     [favoriteStore, refreshFavorites, showToast]
   )
 
+  const requestLoadSavedRoute = useCallback(
+    (id: number) => {
+      if (state.points.length > 0) {
+        setPendingLoadId(id)
+        return
+      }
+      applyLoadSavedRoute(id)
+    },
+    [state.points.length, applyLoadSavedRoute]
+  )
+
+  const confirmLoadSavedRoute = useCallback(() => {
+    if (pendingLoadId === null) return
+    applyLoadSavedRoute(pendingLoadId)
+    setPendingLoadId(null)
+  }, [pendingLoadId, applyLoadSavedRoute])
+
   const confirmDeleteSaved = useCallback(() => {
     if (deleteId === null) return
     const removed = favoriteStore.remove(deleteId)
@@ -358,6 +465,19 @@ export default function App() {
       return
     }
     const url = `${window.location.origin}${window.location.pathname}?${search}`
+    if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
+      try {
+        await navigator.share({
+          title: state.city.name ? `旅行路线 · ${state.city.name}` : '旅行路线',
+          text: `${state.points.length} 个地点`,
+          url
+        })
+        showToast('已分享')
+        return
+      } catch (error) {
+        if (error instanceof DOMException && error.name === 'AbortError') return
+      }
+    }
     const copied = await copyText(url)
     if (copied) {
       showToast('分享链接已复制')
@@ -460,6 +580,17 @@ export default function App() {
               </span>
             </div>
 
+            <div className="location-row">
+              <button
+                type="button"
+                className="btn location-button"
+                disabled={!mapReady}
+                onClick={() => void handleUseMyLocation()}
+              >
+                ◎ 以当前位置为起点
+              </button>
+            </div>
+
             <section className="point-summary" aria-label="途经点">
               <div className="section-head">
                 <h2>途经点</h2>
@@ -530,6 +661,29 @@ export default function App() {
           onReady={() => setMapReady(true)}
           onError={() => setMapReady(false)}
         />
+        {!routeOpen && (
+          <div className="mobile-topbar">
+            <button type="button" className="mobile-city" onClick={() => setCityOpen(true)}>
+              {state.city.name} ▾
+            </button>
+            <button
+              type="button"
+              className="mobile-search"
+              disabled={!mapReady}
+              onClick={() => setSearchOpen(true)}
+            >
+              🔍 搜索地点
+            </button>
+          </div>
+        )}
+        <button
+          type="button"
+          className="map-locate"
+          aria-label="定位到当前位置"
+          onClick={() => void handleLocate()}
+        >
+          ◎
+        </button>
         <div className="weather-float">
           <WeatherCard city={state.city} state={weather} onRetry={weather.retry} />
         </div>
@@ -581,7 +735,7 @@ export default function App() {
         open={savedOpen}
         routes={savedRoutes}
         onClose={() => setSavedOpen(false)}
-        onLoad={loadSavedRoute}
+        onLoad={requestLoadSavedRoute}
         onDelete={setDeleteId}
       />
 
@@ -594,6 +748,15 @@ export default function App() {
         onCancel={() => setDeleteId(null)}
       />
 
+      <ConfirmDialog
+        open={pendingLoadId !== null}
+        title="加载收藏？"
+        message="当前路线将被这条收藏替换。"
+        confirmText="加载"
+        onConfirm={confirmLoadSavedRoute}
+        onCancel={() => setPendingLoadId(null)}
+      />
+
       <TextDialog
         open={manualText !== null}
         title={manualText?.title ?? ''}
@@ -601,7 +764,20 @@ export default function App() {
         onClose={() => setManualText(null)}
       />
 
-      <Toast message={toast} />
+      <Toast
+        message={toast}
+        actionLabel={toastAction?.label}
+        onAction={
+          toastAction
+            ? () => {
+                const run = toastAction.run
+                setToast(null)
+                setToastAction(null)
+                run()
+              }
+            : undefined
+        }
+      />
     </div>
   )
 }
