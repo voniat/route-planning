@@ -52,6 +52,51 @@ function readCoordinate(value: unknown): LngLat | null {
   return Number.isFinite(lng) && Number.isFinite(lat) ? { lng, lat } : null
 }
 
+export function mapPlaceSearchResult(result: unknown): PlaceResult[] {
+  const record = isRecord(result) ? result : {}
+  const poiList = isRecord(record.poiList) ? record.poiList : null
+  const pois =
+    poiList && Array.isArray(poiList.pois)
+      ? poiList.pois
+      : Array.isArray(record.pois)
+        ? record.pois
+        : []
+  const seen = new Set<string>()
+  const places: PlaceResult[] = []
+  pois.forEach((poi, index) => {
+    if (!isRecord(poi)) return
+    const coordinate = readCoordinate(poi.location)
+    if (!coordinate) return
+    const key = `${coordinate.lat.toFixed(4)},${coordinate.lng.toFixed(4)}`
+    if (seen.has(key)) return
+    seen.add(key)
+    places.push({
+      id: readString(poi.id) || `poi-${index}`,
+      title: readString(poi.name) || '未命名地点',
+      address: readAddress(poi.address),
+      lat: coordinate.lat,
+      lng: coordinate.lng
+    })
+  })
+  return places
+}
+
+export function mapTipsResult(result: unknown): Suggestion[] {
+  const record = isRecord(result) ? result : {}
+  const tips = Array.isArray(record.tips) ? record.tips : []
+  const suggestions: Suggestion[] = []
+  for (const tip of tips) {
+    if (!isRecord(tip) || !readString(tip.name)) continue
+    suggestions.push({
+      id: readString(tip.id),
+      name: readString(tip.name),
+      district: readString(tip.district)
+    })
+    if (suggestions.length >= 10) break
+  }
+  return suggestions
+}
+
 export function searchPlaces(
   amap: AmapNamespace,
   keyword: string,
@@ -65,26 +110,7 @@ export function searchPlaces(
         reject(new AppError('SEARCH', info))
         return
       }
-      const record = isRecord(result) ? result : {}
-      const pois = Array.isArray(record.pois) ? record.pois : []
-      const seen = new Set<string>()
-      const places: PlaceResult[] = []
-      pois.forEach((poi, index) => {
-        if (!isRecord(poi)) return
-        const coordinate = readCoordinate(poi.location)
-        if (!coordinate) return
-        const key = `${coordinate.lat.toFixed(4)},${coordinate.lng.toFixed(4)}`
-        if (seen.has(key)) return
-        seen.add(key)
-        places.push({
-          id: readString(poi.id) || `poi-${index}`,
-          title: readString(poi.name) || '未命名地点',
-          address: readAddress(poi.address),
-          lat: coordinate.lat,
-          lng: coordinate.lng
-        })
-      })
-      resolve(places)
+      resolve(mapPlaceSearchResult(result))
     })
   })
 }
@@ -101,19 +127,7 @@ export function loadSuggestions(
         resolve([])
         return
       }
-      const record = isRecord(result) ? result : {}
-      const tips = Array.isArray(record.tips) ? record.tips : []
-      const suggestions: Suggestion[] = []
-      for (const tip of tips) {
-        if (!isRecord(tip) || !readString(tip.name)) continue
-        suggestions.push({
-          id: readString(tip.id),
-          name: readString(tip.name),
-          district: readString(tip.district)
-        })
-        if (suggestions.length >= 10) break
-      }
-      resolve(suggestions)
+      resolve(mapTipsResult(result))
     })
   })
 }
