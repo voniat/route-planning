@@ -1783,6 +1783,7 @@ dialog::backdrop {
 .segment-tab,
 .mode-tab,
 .plan-tab {
+  flex: none;
   padding: 7px 12px;
   border-color: var(--color-border);
   background: var(--color-surface);
