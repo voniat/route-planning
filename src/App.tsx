@@ -88,6 +88,15 @@ function locateUser(): Promise<{ lng: number; lat: number }> {
   })
 }
 
+function SearchIcon() {
+  return (
+    <svg className="search-icon" viewBox="0 0 24 24" aria-hidden="true">
+      <circle cx="11" cy="11" r="7" />
+      <path d="m20 20-3.5-3.5" />
+    </svg>
+  )
+}
+
 export default function App() {
   const [state, dispatch] = useReducer(plannerReducer, initialPlannerState)
   const persistentStorage = useMemo(() => getBrowserStorage(), [])
@@ -529,7 +538,9 @@ export default function App() {
   return (
     <div className="app-layout">
       <aside className="sidebar">
-        <header className="brand">
+        <div className="sidebar-scroll">
+          <header className="brand">
+          <span className="brand-kicker">MULTI-STOP ROUTE</span>
           <h1>旅行路线规划</h1>
           <p>地图选点，查看公交/地铁与步行方案</p>
         </header>
@@ -562,33 +573,35 @@ export default function App() {
                 disabled={!mapReady}
                 onClick={() => setSearchOpen(true)}
               >
-                🔍 搜索地点添加途经点
+                <SearchIcon />
+                搜索地点添加途经点
               </button>
             </div>
 
             <div className="pick-row">
-              <button
-                type="button"
-                className={pickMode ? 'pick-button active' : 'pick-button'}
-                disabled={!mapReady}
-                onClick={() => setPickMode((value) => !value)}
-              >
-                {pickMode ? '取消地图选点' : '＋ 地图选点'}
-              </button>
+              <div className="pick-actions">
+                <button
+                  type="button"
+                  className={pickMode ? 'pick-button active' : 'pick-button'}
+                  disabled={!mapReady}
+                  onClick={() => setPickMode((value) => !value)}
+                >
+                  {pickMode ? '取消选点' : '地图选点'}
+                </button>
+                <button
+                  type="button"
+                  className="pick-button"
+                  disabled={!mapReady}
+                  aria-label="以当前位置为起点"
+                  title="以当前位置为起点"
+                  onClick={() => void handleUseMyLocation()}
+                >
+                  当前位置
+                </button>
+              </div>
               <span className="pick-hint">
-                {pickMode ? '点击地图添加地点' : '高德地图 · 点击地图可拾取位置'}
+                {pickMode ? '点击地图添加地点' : '地图选点，或把当前位置设为起点'}
               </span>
-            </div>
-
-            <div className="location-row">
-              <button
-                type="button"
-                className="btn location-button"
-                disabled={!mapReady}
-                onClick={() => void handleUseMyLocation()}
-              >
-                ◎ 以当前位置为起点
-              </button>
             </div>
 
             <section className="point-summary" aria-label="途经点">
@@ -622,7 +635,7 @@ export default function App() {
             {state.points.length > 0 && (
               <div className="secondary-actions">
                 <button type="button" className="btn" onClick={() => setSaveOpen(true)}>
-                  ⭐ 收藏路线
+                  收藏路线
                 </button>
                 <button type="button" className="btn" onClick={openSavedPanel}>
                   收藏 ({savedRoutes.length})
@@ -635,18 +648,21 @@ export default function App() {
                 </button>
               </div>
             )}
-
-            {state.points.length >= 2 && (
-              <button
-                type="button"
-                className="btn primary route-open-button"
-                disabled={!mapReady}
-                onClick={openRoute}
-              >
-                查看交通路线
-              </button>
-            )}
           </>
+        )}
+        </div>
+
+        {!routeOpen && state.points.length >= 2 && (
+          <div className="sidebar-footer">
+            <button
+              type="button"
+              className="btn primary route-open-button"
+              disabled={!mapReady}
+              onClick={openRoute}
+            >
+              查看交通路线
+            </button>
+          </div>
         )}
       </aside>
 
@@ -672,7 +688,8 @@ export default function App() {
               disabled={!mapReady}
               onClick={() => setSearchOpen(true)}
             >
-              🔍 搜索地点
+              <SearchIcon />
+              搜索地点
             </button>
           </div>
         )}

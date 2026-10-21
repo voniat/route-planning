@@ -38,7 +38,7 @@ function readClickEvent(event: unknown): LngLat | null {
 function markerContent(index: number, total: number): string {
   if (index === 0) return '<div class="map-marker start">起</div>'
   if (index === total - 1) return '<div class="map-marker end">终</div>'
-  return `<div class="map-marker mid">${index}</div>`
+  return `<div class="map-marker mid">${index + 1}</div>`
 }
 
 export function createMap(amap: AmapNamespace, container: HTMLElement): MapHandle {

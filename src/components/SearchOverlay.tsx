@@ -125,7 +125,7 @@ export default function SearchOverlay({
     >
       <div className="search-panel">
         <header className="search-header">
-          <h2 id="search-dialog-title" className="sr-only">
+          <h2 id="search-dialog-title" className="search-title">
             搜索地点
           </h2>
           <div className="search-input-row">

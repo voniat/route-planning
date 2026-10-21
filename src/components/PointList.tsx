@@ -132,7 +132,7 @@ export default function PointList({ points, selectedId, onRemove, onMove }: Poin
                   isStart ? 'summary-index start' : isEnd ? 'summary-index end' : 'summary-index'
                 }
               >
-                {isStart ? '起' : isEnd ? '终' : index}
+                {isStart ? '起' : isEnd ? '终' : index + 1}
               </span>
               <span className="point-main">
                 <span className="point-title">{point.title}</span>

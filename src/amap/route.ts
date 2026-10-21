@@ -37,8 +37,8 @@ export interface WalkingView {
   polyline: PolylineView
 }
 
-const WALK_COLOR = '#1989fa'
-const LINE_COLORS = ['#e64340', '#1989fa', '#9c27b0', '#ff4081', '#009688', '#ff8833', '#536dfe', '#00bcd4']
+const WALK_COLOR = '#b4451f'
+const LINE_COLORS = ['#3f6b57', '#4f5d75', '#c98a2e', '#8e5a3c', '#6b7f4a', '#536dfe', '#00bcd4', '#9c27b0']
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null
