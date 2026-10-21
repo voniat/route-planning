@@ -460,3 +460,9 @@ pnpm verify     # tsc --noEmit && vitest run && node scripts/security-check.mjs 
 - 无占位符；文件路径与命令具体；TDD 路由已记录为 skipped。
 - 兼容/退役明确；不新增后端、不新增兼容分支。
 - 剩余风险：Amap 回调字段（Task 3/5 联调确认）、Key 与域名白名单（用户前置）、推送 GH007（用户修复后补推）、无浏览器自动化（手工验收）。
+
+### 15.12 执行状态
+
+- 2026-10-21：规格与计划已提交（`dbe9db0`、`bdf1c2f`），`main` 领先 `origin/main` 2 个提交；推送因 GH007 待用户处理。
+- Task 1 未开始，工作树干净。阻塞：DSH 网络策略对 `registry.npmjs.org` 返回 403（`npmmirror`/`jsdelivr`/`unpkg` 同样被拒）；本机无 React/Vite，pnpm store 仅有 `typescript`、`@types/react` 等 DSH 依赖。
+- 解除方式：放行 npm registry，或由用户在自己的终端执行 `pnpm install`；安装完成后再执行 Task 1 并跑 `pnpm verify`。
