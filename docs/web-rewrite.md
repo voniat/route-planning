@@ -290,3 +290,173 @@ pnpm verify     # tsc --noEmit && vitest run && node scripts/security-check.mjs 
 - **定位依赖 HTTPS**：本地 localhost 可用，部署必须 HTTPS。
 - **Open-Meteo 网络可达性**：被拦截时天气降级为错误 + 重试，不影响地图与路线。
 - **无浏览器自动化**：交互验收依赖手工清单，不能声称已自动验证。
+
+## 15. 实施计划
+
+> 本节由 writing-plans 生成；需求见 §1–14，批准于 2026-10-21。按 Task 1 → 7 顺序执行，每片 `pnpm verify` 通过后提交。推送暂受 GitHub `GH007`（当前提交邮箱被视为私有）阻塞，先本地提交，待用户修复设置或提供 noreply 地址后统一补推。
+
+### 15.1 就绪与边界
+
+- **Requirement Ready Check**：来源=本文件 §1–14；范围=§2.1；场景=§7；验收=AC1–AC12。唯一外部前置是手工验收用高德 Web端 Key 与域名白名单，不阻塞编码。
+- **TDD Route**：mode=off（会话声明）；decision=skipped；authority=项目 TDD 关闭；posture=核心纯逻辑配单测，其余靠 `pnpm verify` + 手工验收；不设置 RED/GREEN 步骤。
+- **Change Necessity**：浏览器版没有现存实现，必须新增 `src/` 与构建链；旧壳删除放在最后一片。最小边界=前端源码 + 验证脚本 + CI/文档。
+- **Ripple Signal Triage**：新增持久化键（owner `core/storage.ts`）、新增 Amap 适配契约（owner `amap/route.ts`）、删除旧 owner（小程序壳与代理）。点/城市状态源=`state/planner.ts`；路线视图只由 `amap/route.ts` 产出；组件不直接读 SDK 或 localStorage。
+- **兼容边界**：本地存储与分享链接不与小程序兼容；旧实现由 git 历史保留；不加兼容分支。
+- **Baseline refs**：本文件（规格提交 `dbe9db0`）、当前 `main`（`5a5a792`）、现有 11 个测试与纯逻辑实现。
+- **执行路由**：inline（顺序任务，无并行写入）。User confirmation required: no；Key 由用户在 Task 3 前提供，未提供时 AC2–AC6 记为未验证。
+- **Complexity Budget**：Task 1 脚手架 ≤ 18 个文件；其余每片 ≤ 14 个；UI 组件单片 ≤ 5 个；`App.tsx` 只做组合与副作用；单组件 > 250 行即拆分；不做兼容层或回退实现。
+- **Amap 未知量**：Task 3 联调首日确认 `Transfer`/`Walking` 回调字段；差异只改 `amap/route.ts`、`amap/types.ts`，并补 fixture。
+
+### 15.2 Task 1：脚手架与验证链
+
+**Purpose**：新应用可构建、可测试、CI 与密钥扫描可运行；旧小程序文件暂不动。
+
+**Files**：`package.json`、`pnpm-lock.yaml`、`tsconfig.json`、`vite.config.ts`、`index.html`、`.env.example`、`.gitignore`、`scripts/security-check.mjs`、`.github/workflows/ci.yml`、`src/main.tsx`、`src/App.tsx`、`src/vite-env.d.ts`、`src/core/format.ts`、`src/core/format.test.ts`、`src/styles/tokens.css`、`src/styles/app.css`、`docs/web-rewrite.md`
+
+**Steps**
+
+1. 替换 `package.json`：React 19 运行依赖；`@vitejs/plugin-react`、`typescript`、`vite`、`vitest`、`@types/react`、`@types/react-dom` 开发依赖；`packageManager: pnpm@11.20.0`；脚本 `dev/build/preview/test/typecheck/security/verify`（`verify = tsc --noEmit && vitest run && node scripts/security-check.mjs && vite build`）。
+2. 新增 TS/Vite 配置：strict、`jsx: react-jsx`、`moduleResolution: bundler`；Vitest `environment: 'node'`、`include: ['src/**/*.test.ts']`。
+3. 新增最小 React 壳：`index.html`、`main.tsx`、占位 `App.tsx`、tokens/app CSS、`vite-env.d.ts`。
+4. `core/format.ts`（`formatDistance`、`formatDuration`）与单测；保证 Task 1 就有测试可跑。
+5. 把 `scripts/security-check.js` 改写为 ESM `security-check.mjs`：沿用敏感文件/密钥规则，新增 `VITE_AMAP_KEY=<32 位十六进制>` 硬编码检测与 `src/` 中 `restapi.amap.com` 检测。
+6. `.env.example` 写 `your-...` 占位；`.gitignore` 加 `.env.local`、`dist/`。
+7. CI 改为 pnpm 11 + Node 22 + `pnpm install --frozen-lockfile` + `pnpm verify`。
+8. `pnpm install` 生成并提交锁文件；`pnpm verify` 全绿。
+
+**Verify**：`pnpm verify` 通过；`dist/` 生成；`git status` 只含预期文件。
+**Commit**：`chore: 引入 Vite + React + TypeScript 脚手架与验证链`
+
+### 15.3 Task 2：核心纯逻辑与单元测试
+
+**Purpose**：把可移植规则落到 `core/*`，UI 之前先锁住行为。
+
+**Files**：`src/core/errors.ts`、`points.ts`、`cities.ts`、`storage.ts`、`weather.ts`、`favorites.ts`、`share.ts` 及各自 `*.test.ts`；`src/core/cities.ts` 复用现有城市与坐标数据（删除「全国」项）。
+
+**Steps**
+
+1. `errors.ts`：`AppError`（code 见规格 §5）。
+2. `points.ts`：`MAX_POINTS=20`、`createPointId`、`isValidCoordinate`、`normalizePoints`（4 位小数去重、标题 100 字、过滤非法坐标）。
+3. `cities.ts`：`PROVINCE_DATA`、`CITY_COORDS`、`findCity`、`DEFAULT_CITY`（北京）；测试覆盖坐标完整性。
+4. `storage.ts`：`StorageLike` 接口、键名常量、安全 JSON 读写、内存回退。`favorites.ts` 注入 `StorageLike`，实现 list/add/remove/getById、50 条淘汰、损坏数据过滤。
+5. `weather.ts`：移植 `parseForecast`/`describeCode`，输出 `WeatherView`，不做网络请求。
+6. `share.ts`：`encodeShare(points, city)`（超长/空点返回 null）与 `decodeShare(search)`（校验数组、坐标、城市）。
+7. 单测覆盖规格 §11.2 的 points/cities/weather/favorites/share 项。
+
+**Verify**：`pnpm test` 通过；`pnpm verify` 通过。
+**Commit**：`feat: 移植核心纯逻辑与单元测试`
+
+### 15.4 Task 3：地图、定位、搜索与选点
+
+**Purpose**：真实地图可加载，能把点加进状态；缺 Key/定位失败有恢复路径。
+
+**Files**：`src/amap/load.ts`、`types.ts`、`map.ts`、`search.ts`、`geocode.ts`；`src/state/planner.ts`；`src/components/MapView.tsx`、`SearchOverlay.tsx`、`CityDialog.tsx`、`Dialog.tsx`、`Toast.tsx`；`src/App.tsx`（接线）；`src/styles/app.css`。
+
+**Steps**
+
+1. `load.ts`：校验 `VITE_AMAP_KEY`/`VITE_AMAP_SECURITY_CODE`；设置 `_AMapSecurityConfig`；插入 v2 脚本（插件列表见规格 §10）；8s 超时；失败抛 `AppError('AMAP_LOAD')`。
+2. `types.ts`：仅覆盖用到的 `Map/Marker/Polyline/PlaceSearch/AutoComplete/Geocoder/Transfer/Walking/ToolBar` 形态。
+3. `map.ts`：创建地图、ToolBar、marker/polyline 同步、`fitView(points)`、点击事件订阅；不把 SDK 对象交给组件。
+4. `search.ts`：`searchPlaces(kw, city)`、`inputTips(kw, city)`，输出 `{title,address,lat,lng}` 列表，4 位小数去重、标记已添加。
+5. `geocode.ts`：坐标 → 地址；城市名解析用于定位后匹配。
+6. `state/planner.ts`：`{ city, points }` reducer 与增删/排序/替换动作。
+7. UI：MapView 容器 + 加载/缺 Key 卡片；SearchOverlay（历史 10 条、建议、结果、已添加标记）；CityDialog（两级 select）；Dialog/Toast 基础件。
+8. 定位：成功则居中并尝试匹配城市；拒绝/超时保持北京并提示；地图选点一次性模式 + 反地理编码确认。
+9. 首次联调：确认 `Transfer/Walking` 字段；若与类型不符只改 `amap/*`，记录差异。
+
+**Verify**：`pnpm verify` 通过；提供 Key 后手工 AC2、AC3、AC10（缺 Key/定位拒绝部分）。
+**Commit**：`feat: 接入高德地图、城市定位与地点搜索`
+
+### 15.5 Task 4：途经点列表、排序与草稿
+
+**Purpose**：点的管理闭环，刷新不丢。
+
+**Files**：`src/components/PointList.tsx`、`EmptyState.tsx`；`src/core/draft.ts` + `draft.test.ts`；`src/App.tsx`；`src/styles/app.css`。
+
+**Steps**
+
+1. `draft.ts`：`loadDraft()`/`saveDraft(points, city)`，300ms 防抖由调用方负责，校验失败返回 null。
+2. PointList：序号/标题/地址、删除、清空确认、拖拽手柄（pointer events）+ 键盘 ↑/↓、移动后 aria-live 播报。
+3. 接线：点/城市变化写草稿；启动时无有效分享参数则恢复草稿；单点/无点空状态。
+4. 地图与列表同步：点顺序变化后重设 marker 与视野。
+
+**Verify**：`pnpm verify`；手工 AC4、AC8（草稿部分）、AC11（列表部分）。
+**Commit**：`feat: 途经点列表、拖拽排序与草稿持久化`
+
+### 15.6 Task 5：公交/步行路线面板与地图折线
+
+**Purpose**：核心路线能力；适配层锁住 SDK 形态。
+
+**Files**：`src/amap/route.ts`；`src/amap/route.test.ts`（联调捕获 fixture 后补用例）；`src/hooks/useRoutePlans.ts`；`src/components/RoutePanel.tsx`；`src/App.tsx`；`src/styles/app.css`。
+
+**Steps**
+
+1. `route.ts`：`getTransitPlans(origin, dest, city)`→`PlanView[]`；`getWalkingPlan(origin, dest)`→`WalkingView`；步骤、费用、耗时、折线、线路颜色映射；错误归一化为 `AppError('ROUTE')`。
+2. `useRoutePlans.ts`：按路段按需请求、会话缓存 key、`requestId` 防竞态、错误/重试状态。
+3. RoutePanel：路段 tab、公交/步行 tab、方案切换、步骤列表、加载/错误/空状态；打开默认第 1 段。
+4. 地图折线随方案/模式切换；点变更清空缓存。
+5. 联调后捕获脱敏响应，补 `route.test.ts` fixture 用例；未捕获前在验收记录中记为未覆盖。
+
+**Verify**：`pnpm verify`；手工 AC5、AC6。
+**Commit**：`feat: 公交/步行路线面板与地图折线`
+
+### 15.7 Task 6：天气、收藏、分享与复制行程
+
+**Purpose**：补齐首版外围功能与恢复路径。
+
+**Files**：`src/hooks/useWeather.ts`；`src/components/WeatherCard.tsx`、`SavedPanel.tsx`；`src/core/favorites.ts`（已建，接线）；`src/core/share.ts`（已建，接线）；`src/App.tsx`；`src/styles/app.css`。
+
+**Steps**
+
+1. `useWeather.ts`：Open-Meteo `fetch`（current/daily/timezone=auto/forecast_days=7），`AbortController` 防旧响应；成功后 `parseForecast`；失败可重试；不做客户端缓存。
+2. WeatherCard：当前天气 + 7 日折叠；加载/错误态。
+3. 收藏：保存（名称可编辑）、列表、加载（替换点/城市并 fitView）、删除确认；50 条淘汰提示。
+4. 分享：生成 URL、复制剪贴板、失败回退文本；启动时解析并立即写草稿后 `replaceState`。
+5. 复制行程：文本生成 + 剪贴板回退。
+6. 错误矩阵（规格 §8）逐项接线。
+
+**Verify**：`pnpm verify`；手工 AC7、AC8（收藏）、AC9、AC10（天气/分享）。
+**Commit**：`feat: 天气、收藏、分享链接与行程复制`
+
+### 15.8 Task 7：删除旧壳、文档与最终验收
+
+**Purpose**：完成迁移，仓库只剩浏览器应用；给出可复现的验收记录。
+
+**Files**：删除 `pages/`、`components/`、`utils/`、`test/`、`serverless/`、`app.js`、`app.json`、`app.wxss`、`project.config.json`、`sitemap.json`、`scripts/check.js`、本地 `utils/config.js`；更新 `AGENTS.md`、`README.md`、`DEPLOYMENT.md`、`SECURITY.md`、`.github/workflows/ci.yml`、`docs/web-rewrite.md`（验收记录）。
+
+**Steps**
+
+1. 删除旧壳与代理；确认无残留引用。
+2. 更新 AGENTS.md：新栈、命令、密钥、提交规范；删除 wx 规则。
+3. 更新 README/DEPLOYMENT/SECURITY：功能、启动、Key 与白名单、静态托管、旧云函数下线清单、前端 Key 风险。
+4. 跑 AC12 检查：`pnpm verify`、`git grep -n "wx\\."`、`git grep -n "restapi.amap.com"`、检查无 Web 服务 Key。
+5. 记录手工验收证据（AC2–AC11 实际结果与未覆盖项）到本文档；未提供 Key 时明确标记未验证。
+
+**Verify**：`pnpm verify`；AC12 自动检查；文档链接有效。
+**Commit**：`refactor: 删除小程序壳与云函数代理，更新项目文档`
+
+### 15.9 验收映射
+
+| AC | Task | 证据 |
+| --- | --- | --- |
+| AC1 | 1 | `pnpm verify` |
+| AC2、AC3 | 3 | 真实 Key 手工验收 |
+| AC4、AC8 草稿 | 4 | 手工 + `draft` 单测 |
+| AC5、AC6 | 5 | 手工 + `route` fixture |
+| AC7、AC8 收藏、AC9 | 6 | 手工 + `favorites/share` 单测 |
+| AC10 | 3、6 | 手工 |
+| AC11 | 4、6 | 手工（360–430px、1280px、仅键盘） |
+| AC12 | 7 | `pnpm verify` + 检索 |
+
+### 15.10 退役与回滚
+
+- 退役：Task 7 删除小程序壳、代理、旧脚本与旧测试；云函数与代理环境变量由用户在确认新站后手工删除。
+- 回滚：`git revert` Task 7 提交即可恢复旧实现；Task 1–6 不改动旧小程序源码文件。
+- 无兼容层、无双写、无旧存储迁移。
+
+### 15.11 计划自审
+
+- 范围覆盖：§2.1 全部条目均落到 Task 1–7；AC1–AC12 有映射。
+- 无占位符；文件路径与命令具体；TDD 路由已记录为 skipped。
+- 兼容/退役明确；不新增后端、不新增兼容分支。
+- 剩余风险：Amap 回调字段（Task 3/5 联调确认）、Key 与域名白名单（用户前置）、推送 GH007（用户修复后补推）、无浏览器自动化（手工验收）。
