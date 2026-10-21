@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'r
 import CityDialog from './components/CityDialog'
 import ConfirmDialog from './components/ConfirmDialog'
 import MapView from './components/MapView'
+import PointList from './components/PointList'
 import SearchOverlay from './components/SearchOverlay'
 import Toast from './components/Toast'
 import { hasAmapKey, loadAmap } from './amap/load'
@@ -10,6 +11,7 @@ import type { MapFocus } from './amap/map'
 import type { LngLat } from './amap/types'
 import type { PlaceResult } from './amap/search'
 import { findCity, type City } from './core/cities'
+import { clearDraft, loadDraft, saveDraft } from './core/draft'
 import { MAX_POINTS, isDuplicateCoordinate, normalizePoints } from './core/points'
 import { STORAGE_KEYS, getBrowserStorage, readJson, writeJson, type StorageLike } from './core/storage'
 import { initialPlannerState, plannerReducer } from './state/planner'
@@ -40,24 +42,48 @@ export default function App() {
   const [cityOpen, setCityOpen] = useState(false)
   const [pickMode, setPickMode] = useState(false)
   const [pendingPick, setPendingPick] = useState<PendingPick | null>(null)
+  const [clearOpen, setClearOpen] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
   const toastTimer = useRef<number | null>(null)
   const pointsCount = useRef(0)
+  const draftLoaded = useRef(false)
+  const cityTouched = useRef(false)
+
+  const showToast = useCallback((message: string) => {
+    setToast(message)
+    if (toastTimer.current) window.clearTimeout(toastTimer.current)
+    toastTimer.current = window.setTimeout(() => setToast(null), 2600)
+  }, [])
 
   useEffect(() => {
     pointsCount.current = state.points.length
   }, [state.points.length])
 
   useEffect(() => {
+    if (draftLoaded.current) return
+    draftLoaded.current = true
+    const draft = loadDraft(storage)
+    if (!draft) return
+    const city = draft.city ? findCity(draft.city) : null
+    dispatch({ type: 'replace-points', points: draft.points, city: city ?? undefined })
+    showToast('已恢复上次草稿')
+  }, [storage, showToast])
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      if (state.points.length === 0) {
+        clearDraft(storage)
+        return
+      }
+      saveDraft(storage, state.points, state.city.name)
+    }, 300)
+    return () => window.clearTimeout(timer)
+  }, [state.points, state.city.name, storage])
+
+  useEffect(() => {
     return () => {
       if (toastTimer.current) window.clearTimeout(toastTimer.current)
     }
-  }, [])
-
-  const showToast = useCallback((message: string) => {
-    setToast(message)
-    if (toastTimer.current) window.clearTimeout(toastTimer.current)
-    toastTimer.current = window.setTimeout(() => setToast(null), 2600)
   }, [])
 
   const updateHistory = useCallback(
@@ -126,10 +152,22 @@ export default function App() {
   }, [addPoint, pendingPick])
 
   const confirmCity = useCallback((city: City) => {
+    cityTouched.current = true
     dispatch({ type: 'set-city', city })
     setCityOpen(false)
     setFocus({ lng: city.lng, lat: city.lat, zoom: 11, nonce: Date.now() })
   }, [])
+
+  const removePoint = useCallback((id: string) => {
+    dispatch({ type: 'remove-point', id })
+  }, [])
+
+  const clearPoints = useCallback(() => {
+    dispatch({ type: 'clear' })
+    clearDraft(storage)
+    setClearOpen(false)
+    showToast('已清空途经点')
+  }, [storage, showToast])
 
   useEffect(() => {
     if (!hasAmapKey() || pointsCount.current > 0) return
@@ -137,11 +175,9 @@ export default function App() {
     let cancelled = false
     navigator.geolocation.getCurrentPosition(
       (position) => {
-        if (cancelled) return
+        if (cancelled || pointsCount.current > 0 || cityTouched.current) return
         const lngLat = { lng: position.coords.longitude, lat: position.coords.latitude }
-        if (pointsCount.current === 0) {
-          setFocus({ ...lngLat, zoom: 14, nonce: Date.now() })
-        }
+        setFocus({ ...lngLat, zoom: 14, nonce: Date.now() })
         void loadAmap()
           .then((amap) => reverseGeocode(amap, lngLat))
           .then((result) => {
@@ -214,24 +250,16 @@ export default function App() {
               <p className="muted">搜索或点地图添加第一个地点。</p>
             </div>
           ) : (
-            <ol className="summary-list">
-              {state.points.map((point, index) => (
-                <li key={point.id}>
-                  <span
-                    className={
-                      index === 0
-                        ? 'summary-index start'
-                        : index === state.points.length - 1
-                          ? 'summary-index end'
-                          : 'summary-index'
-                    }
-                  >
-                    {index === 0 ? '起' : index === state.points.length - 1 ? '终' : index}
-                  </span>
-                  <span className="summary-title">{point.title}</span>
-                </li>
-              ))}
-            </ol>
+            <>
+              <PointList
+                points={state.points}
+                onRemove={removePoint}
+                onMove={(from, to) => dispatch({ type: 'move-point', from, to })}
+              />
+              <button type="button" className="link-button" onClick={() => setClearOpen(true)}>
+                清空全部
+              </button>
+            </>
           )}
           {state.points.length === 1 && <p className="inline-hint">至少 2 个点才能规划路线</p>}
         </section>
@@ -272,6 +300,15 @@ export default function App() {
         confirmText="添加"
         onConfirm={confirmPending}
         onCancel={() => setPendingPick(null)}
+      />
+
+      <ConfirmDialog
+        open={clearOpen}
+        title="清空途经点？"
+        message="将删除所有途经点，地图标记与草稿也会清除。"
+        confirmText="清空"
+        onConfirm={clearPoints}
+        onCancel={() => setClearOpen(false)}
       />
 
       <Toast message={toast} />

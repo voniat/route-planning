@@ -467,5 +467,6 @@ pnpm verify     # tsc --noEmit && vitest run && node scripts/security-check.mjs 
 - Task 1 完成：`pnpm verify` 通过（TypeScript、7 个单测、密钥扫描、`vite build` 222.77 kB / gzip 69.52 kB）。npm registry 通过项目级未跟踪的 `.dsh/rules.yaml` 放行。
 - Task 2 完成：`core/*` 纯逻辑（points/cities/storage/weather/favorites/share）与 39 项单测通过。
 - Task 3 完成（代码）：地图加载/重试、定位、城市选择、搜索与建议、地图选点；`pnpm verify` 通过（构建 257.30 kB / gzip 83.10 kB）。AC2/AC3 待真实高德 Key 手工验收。
+- Task 4 完成：途经点列表、指针拖拽 + 键盘排序、删除/清空确认、草稿 300ms 防抖恢复；42 项单测通过。
 - CI 工作流修复：`32532ef` 去掉重复的 pnpm 版本输入，统一由 `packageManager` 决定。
-- 下一切片：Task 4 途经点列表、排序与草稿。
+- 下一切片：Task 5 公交/步行路线面板与折线。

@@ -23,6 +23,7 @@ export default function MapView({ points, pickMode, focus, onPick, onReady, onEr
   const onPickRef = useRef(onPick)
   const onReadyRef = useRef(onReady)
   const onErrorRef = useRef(onError)
+  const pointSetKey = useRef('')
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading')
   const [error, setError] = useState('')
   const [attempt, setAttempt] = useState(0)
@@ -42,10 +43,16 @@ export default function MapView({ points, pickMode, focus, onPick, onReady, onEr
 
   useEffect(() => {
     pointsRef.current = points
+    const key = points
+      .map((point) => point.id)
+      .sort()
+      .join('|')
+    const setChanged = key !== pointSetKey.current
+    pointSetKey.current = key
     const handle = handleRef.current
     if (!handle) return
     handle.renderMarkers(points)
-    handle.fitPoints(points)
+    if (setChanged) handle.fitPoints(points)
   }, [points])
 
   useEffect(() => {
