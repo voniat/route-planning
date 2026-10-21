@@ -29,13 +29,32 @@ export interface AmapGeocoder {
   getAddress(position: [number, number], callback: (status: string, result: unknown) => void): void
 }
 
+export interface AmapTransfer {
+  search(
+    origin: [number, number],
+    destination: [number, number],
+    callback: (status: string, result: unknown) => void
+  ): void
+}
+
+export interface AmapWalking {
+  search(
+    origin: [number, number],
+    destination: [number, number],
+    callback: (status: string, result: unknown) => void
+  ): void
+}
+
 export interface AmapNamespace {
   Map: new (container: HTMLElement, options?: Record<string, unknown>) => AmapMap
   Marker: new (options: Record<string, unknown>) => AmapOverlay
+  Polyline: new (options: Record<string, unknown>) => AmapOverlay
   ToolBar: new (options?: Record<string, unknown>) => unknown
   PlaceSearch: new (options?: Record<string, unknown>) => AmapSearchService
   AutoComplete: new (options?: Record<string, unknown>) => AmapSearchService
   Geocoder: new (options?: Record<string, unknown>) => AmapGeocoder
+  Transfer: new (options?: Record<string, unknown>) => AmapTransfer
+  Walking: new (options?: Record<string, unknown>) => AmapWalking
 }
 
 declare global {

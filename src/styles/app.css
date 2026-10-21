@@ -277,6 +277,129 @@ code {
   text-decoration: underline;
 }
 
+.route-open-button {
+  width: 100%;
+}
+
+.route-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.route-panel-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.route-panel-head h2 {
+  font-size: 16px;
+}
+
+.segment-tabs,
+.mode-tabs,
+.plan-tabs {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+
+.segment-tab,
+.mode-tab,
+.plan-tab {
+  border: 1px solid var(--color-border);
+  background: #fff;
+  border-radius: 999px;
+  padding: 6px 10px;
+  font-size: 12px;
+  white-space: nowrap;
+  color: var(--color-text);
+}
+
+.segment-tab {
+  max-width: 240px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.segment-tab.active,
+.mode-tab.active,
+.plan-tab.active {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: #fff;
+}
+
+.mode-tabs {
+  align-self: flex-start;
+}
+
+.route-summary {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  font-size: 13px;
+}
+
+.step-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.step {
+  display: flex;
+  gap: 10px;
+  padding: 10px;
+  border-radius: 10px;
+  background: #f8fafc;
+}
+
+.step-icon {
+  flex: none;
+  font-size: 16px;
+  line-height: 1.4;
+}
+
+.step-body {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.step-title {
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.step-badge {
+  font-size: 11px;
+  color: var(--color-primary);
+}
+
+.step-stations {
+  font-size: 12px;
+}
+
+.step-meta {
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+.walk-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+}
+
 .summary-index {
   width: 22px;
   height: 22px;

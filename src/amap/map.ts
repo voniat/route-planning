@@ -1,4 +1,5 @@
 import type { Point } from '../core/points'
+import type { PolylineView } from './route'
 import type { AmapMap, AmapNamespace, AmapOverlay, LngLat } from './types'
 
 export interface MapFocus {
@@ -11,7 +12,9 @@ export interface MapFocus {
 export interface MapHandle {
   map: AmapMap
   renderMarkers(points: readonly Point[]): void
+  renderPolylines(polylines: readonly PolylineView[]): void
   fitPoints(points: readonly Point[]): void
+  fitPolylines(): void
   focus(target: MapFocus): void
   onPick(handler: (lngLat: LngLat) => void): () => void
   destroy(): void
@@ -47,6 +50,7 @@ export function createMap(amap: AmapNamespace, container: HTMLElement): MapHandl
   map.addControl(new amap.ToolBar({ position: 'RB' }))
 
   let markers: AmapOverlay[] = []
+  let polylineOverlays: AmapOverlay[] = []
   const pickHandlers = new Set<(lngLat: LngLat) => void>()
   const clickHandler = (event: unknown) => {
     const lngLat = readClickEvent(event)
@@ -71,6 +75,26 @@ export function createMap(amap: AmapNamespace, container: HTMLElement): MapHandl
     if (markers.length > 0) map.add(markers)
   }
 
+  function renderPolylines(polylines: readonly PolylineView[]): void {
+    map.remove(polylineOverlays)
+    polylineOverlays = polylines
+      .filter((polyline) => polyline.path.length > 1)
+      .map(
+        (polyline) =>
+          new amap.Polyline({
+            path: polyline.path,
+            strokeColor: polyline.color,
+            strokeWeight: polyline.width,
+            strokeOpacity: 1,
+            strokeStyle: polyline.dotted ? 'dashed' : 'solid',
+            isOutline: true,
+            outlineColor: '#ffffff',
+            lineJoin: 'round'
+          })
+      )
+    if (polylineOverlays.length > 0) map.add(polylineOverlays)
+  }
+
   function fitPoints(points: readonly Point[]): void {
     if (points.length === 0) return
     if (points.length === 1) {
@@ -79,6 +103,11 @@ export function createMap(amap: AmapNamespace, container: HTMLElement): MapHandl
       return
     }
     map.setFitView(markers, false, [60, 60, 60, 60])
+  }
+
+  function fitPolylines(): void {
+    if (polylineOverlays.length === 0) return
+    map.setFitView(polylineOverlays, false, [70, 70, 70, 70])
   }
 
   function focus(target: MapFocus): void {
@@ -94,8 +123,10 @@ export function createMap(amap: AmapNamespace, container: HTMLElement): MapHandl
   function destroy(): void {
     map.off('click', clickHandler)
     pickHandlers.clear()
+    markers = []
+    polylineOverlays = []
     map.destroy()
   }
 
-  return { map, renderMarkers, fitPoints, focus, onPick, destroy }
+  return { map, renderMarkers, renderPolylines, fitPoints, fitPolylines, focus, onPick, destroy }
 }

@@ -2,11 +2,13 @@ import { useEffect, useRef, useState } from 'react'
 import { AppError } from '../core/errors'
 import type { Point } from '../core/points'
 import type { LngLat } from '../amap/types'
+import type { PolylineView } from '../amap/route'
 import { loadAmap } from '../amap/load'
 import { createMap, type MapFocus, type MapHandle } from '../amap/map'
 
 interface MapViewProps {
   points: Point[]
+  polylines?: PolylineView[]
   pickMode: boolean
   focus: MapFocus | null
   onPick: (lngLat: LngLat) => void
@@ -14,10 +16,19 @@ interface MapViewProps {
   onError?: () => void
 }
 
-export default function MapView({ points, pickMode, focus, onPick, onReady, onError }: MapViewProps) {
+export default function MapView({
+  points,
+  polylines = [],
+  pickMode,
+  focus,
+  onPick,
+  onReady,
+  onError
+}: MapViewProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const handleRef = useRef<MapHandle | null>(null)
   const pointsRef = useRef(points)
+  const polylinesRef = useRef<PolylineView[]>(polylines)
   const focusRef = useRef(focus)
   const pickModeRef = useRef(pickMode)
   const onPickRef = useRef(onPick)
@@ -52,8 +63,20 @@ export default function MapView({ points, pickMode, focus, onPick, onReady, onEr
     const handle = handleRef.current
     if (!handle) return
     handle.renderMarkers(points)
-    if (setChanged) handle.fitPoints(points)
+    if (setChanged && polylinesRef.current.length === 0) handle.fitPoints(points)
   }, [points])
+
+  useEffect(() => {
+    polylinesRef.current = polylines
+    const handle = handleRef.current
+    if (!handle) return
+    handle.renderPolylines(polylines)
+    if (polylines.length > 0) {
+      handle.fitPolylines()
+    } else if (pointsRef.current.length > 0) {
+      handle.fitPoints(pointsRef.current)
+    }
+  }, [polylines])
 
   useEffect(() => {
     focusRef.current = focus
@@ -73,7 +96,9 @@ export default function MapView({ points, pickMode, focus, onPick, onReady, onEr
           if (pickModeRef.current) onPickRef.current(lngLat)
         })
         handle.renderMarkers(pointsRef.current)
-        handle.fitPoints(pointsRef.current)
+        handle.renderPolylines(polylinesRef.current)
+        if (polylinesRef.current.length > 0) handle.fitPolylines()
+        else handle.fitPoints(pointsRef.current)
         if (focusRef.current) handle.focus(focusRef.current)
         setStatus('ready')
         onReadyRef.current?.()

@@ -3,6 +3,7 @@ import CityDialog from './components/CityDialog'
 import ConfirmDialog from './components/ConfirmDialog'
 import MapView from './components/MapView'
 import PointList from './components/PointList'
+import RoutePanel from './components/RoutePanel'
 import SearchOverlay from './components/SearchOverlay'
 import Toast from './components/Toast'
 import { hasAmapKey, loadAmap } from './amap/load'
@@ -10,6 +11,7 @@ import { reverseGeocode } from './amap/geocode'
 import type { MapFocus } from './amap/map'
 import type { LngLat } from './amap/types'
 import type { PlaceResult } from './amap/search'
+import { useRoutePlans, type RouteMode } from './hooks/useRoutePlans'
 import { findCity, type City } from './core/cities'
 import { clearDraft, loadDraft, saveDraft } from './core/draft'
 import { MAX_POINTS, isDuplicateCoordinate, normalizePoints } from './core/points'
@@ -43,6 +45,9 @@ export default function App() {
   const [pickMode, setPickMode] = useState(false)
   const [pendingPick, setPendingPick] = useState<PendingPick | null>(null)
   const [clearOpen, setClearOpen] = useState(false)
+  const [routeOpen, setRouteOpen] = useState(false)
+  const [activeSegment, setActiveSegment] = useState(0)
+  const [routeMode, setRouteMode] = useState<RouteMode>('transit')
   const [toast, setToast] = useState<string | null>(null)
   const toastTimer = useRef<number | null>(null)
   const pointsCount = useRef(0)
@@ -169,6 +174,21 @@ export default function App() {
     showToast('已清空途经点')
   }, [storage, showToast])
 
+  const route = useRoutePlans(state.points, state.city, routeOpen, activeSegment, routeMode)
+  const routePolylines = useMemo(() => {
+    if (!routeOpen) return []
+    if (routeMode === 'walking') return route.walking ? [route.walking.polyline] : []
+    const plan = route.plans[route.planIndex]
+    return plan ? plan.polylines : []
+  }, [routeOpen, routeMode, route.plans, route.planIndex, route.walking])
+
+  const openRoute = useCallback(() => {
+    setPickMode(false)
+    setActiveSegment(0)
+    setRouteMode('transit')
+    setRouteOpen(true)
+  }, [])
+
   useEffect(() => {
     if (!hasAmapKey() || pointsCount.current > 0) return
     if (typeof navigator === 'undefined' || !navigator.geolocation) return
@@ -205,69 +225,97 @@ export default function App() {
           <p>地图选点，查看公交/地铁与步行方案</p>
         </header>
 
-        <div className="planner-actions">
-          <button type="button" className="city-button" onClick={() => setCityOpen(true)}>
-            <span className="city-dot" aria-hidden="true">
-              ◎
-            </span>
-            <span>{state.city.name}</span>
-            <span aria-hidden="true">▾</span>
-          </button>
-          <button
-            type="button"
-            className="search-button"
-            disabled={!mapReady}
-            onClick={() => setSearchOpen(true)}
-          >
-            🔍 搜索地点添加途经点
-          </button>
-        </div>
-
-        <div className="pick-row">
-          <button
-            type="button"
-            className={pickMode ? 'pick-button active' : 'pick-button'}
-            disabled={!mapReady}
-            onClick={() => setPickMode((value) => !value)}
-          >
-            {pickMode ? '取消地图选点' : '＋ 地图选点'}
-          </button>
-          <span className="pick-hint">
-            {pickMode ? '点击地图添加地点' : '高德地图 · 点击地图可拾取位置'}
-          </span>
-        </div>
-
-        <section className="point-summary" aria-label="途经点">
-          <div className="section-head">
-            <h2>途经点</h2>
-            <span>
-              {state.points.length} / {MAX_POINTS}
-            </span>
-          </div>
-          {state.points.length === 0 ? (
-            <div className="empty-state">
-              <p>还没有地点。</p>
-              <p className="muted">搜索或点地图添加第一个地点。</p>
-            </div>
-          ) : (
-            <>
-              <PointList
-                points={state.points}
-                onRemove={removePoint}
-                onMove={(from, to) => dispatch({ type: 'move-point', from, to })}
-              />
-              <button type="button" className="link-button" onClick={() => setClearOpen(true)}>
-                清空全部
+        {routeOpen ? (
+          <RoutePanel
+            points={state.points}
+            activeSegment={activeSegment}
+            mode={routeMode}
+            state={route}
+            onSegmentChange={setActiveSegment}
+            onModeChange={setRouteMode}
+            onSelectPlan={route.selectPlan}
+            onRetry={route.retry}
+            onBack={() => setRouteOpen(false)}
+          />
+        ) : (
+          <>
+            <div className="planner-actions">
+              <button type="button" className="city-button" onClick={() => setCityOpen(true)}>
+                <span className="city-dot" aria-hidden="true">
+                  ◎
+                </span>
+                <span>{state.city.name}</span>
+                <span aria-hidden="true">▾</span>
               </button>
-            </>
-          )}
-          {state.points.length === 1 && <p className="inline-hint">至少 2 个点才能规划路线</p>}
-        </section>
+              <button
+                type="button"
+                className="search-button"
+                disabled={!mapReady}
+                onClick={() => setSearchOpen(true)}
+              >
+                🔍 搜索地点添加途经点
+              </button>
+            </div>
+
+            <div className="pick-row">
+              <button
+                type="button"
+                className={pickMode ? 'pick-button active' : 'pick-button'}
+                disabled={!mapReady}
+                onClick={() => setPickMode((value) => !value)}
+              >
+                {pickMode ? '取消地图选点' : '＋ 地图选点'}
+              </button>
+              <span className="pick-hint">
+                {pickMode ? '点击地图添加地点' : '高德地图 · 点击地图可拾取位置'}
+              </span>
+            </div>
+
+            <section className="point-summary" aria-label="途经点">
+              <div className="section-head">
+                <h2>途经点</h2>
+                <span>
+                  {state.points.length} / {MAX_POINTS}
+                </span>
+              </div>
+              {state.points.length === 0 ? (
+                <div className="empty-state">
+                  <p>还没有地点。</p>
+                  <p className="muted">搜索或点地图添加第一个地点。</p>
+                </div>
+              ) : (
+                <>
+                  <PointList
+                    points={state.points}
+                    onRemove={removePoint}
+                    onMove={(from, to) => dispatch({ type: 'move-point', from, to })}
+                  />
+                  <button type="button" className="link-button" onClick={() => setClearOpen(true)}>
+                    清空全部
+                  </button>
+                </>
+              )}
+              {state.points.length === 1 && <p className="inline-hint">至少 2 个点才能规划路线</p>}
+            </section>
+
+            {state.points.length >= 2 && (
+              <button
+                type="button"
+                className="btn primary route-open-button"
+                disabled={!mapReady}
+                onClick={openRoute}
+              >
+                查看交通路线
+              </button>
+            )}
+          </>
+        )}
       </aside>
 
       <main className="map-area">
         <MapView
           points={state.points}
+          polylines={routePolylines}
           pickMode={pickMode}
           focus={focus}
           onPick={handlePick}
