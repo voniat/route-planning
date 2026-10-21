@@ -470,5 +470,6 @@ pnpm verify     # tsc --noEmit && vitest run && node scripts/security-check.mjs 
 - Task 3 完成（代码）：地图加载/重试、定位、城市选择、搜索与建议、地图选点；`pnpm verify` 通过（构建 257.30 kB / gzip 83.10 kB）。AC2/AC3 待真实高德 Key 手工验收。
 - Task 4 完成：途经点列表、指针拖拽 + 键盘排序、删除/清空确认、草稿 300ms 防抖恢复；42 项单测通过。
 - Task 5 完成并手工验收：无头浏览器实测公交 5 个方案（费用/换乘/站点/步骤），步行 91 分钟 / 6.8 km，地图折线与起终点标记正常；46 项单测通过。高德真实结构：`plans[].segments[].transit_mode` + `transit.{path,lines,on_station,off_station,via_num}`，步行 `routes[].steps[].path`。
+- Task 6 完成并手工验收：Open-Meteo 当前天气 + 7 日预报；收藏保存/列表/加载/删除；分享链接生成、刷新还原并清除参数；复制行程在剪贴板不可用时弹出手动复制文本。49 项单测通过。
 - CI 工作流修复：`32532ef` 去掉重复的 pnpm 版本输入，统一由 `packageManager` 决定。
-- 下一切片：Task 6 天气、收藏、分享与复制行程。
+- 下一切片：Task 7 删除旧壳、文档与最终验收。

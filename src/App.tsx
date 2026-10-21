@@ -4,18 +4,33 @@ import ConfirmDialog from './components/ConfirmDialog'
 import MapView from './components/MapView'
 import PointList from './components/PointList'
 import RoutePanel from './components/RoutePanel'
+import SaveRouteDialog from './components/SaveRouteDialog'
+import SavedPanel from './components/SavedPanel'
 import SearchOverlay from './components/SearchOverlay'
+import TextDialog from './components/TextDialog'
 import Toast from './components/Toast'
+import WeatherCard from './components/WeatherCard'
 import { hasAmapKey, loadAmap } from './amap/load'
 import { reverseGeocode } from './amap/geocode'
 import type { MapFocus } from './amap/map'
 import type { LngLat } from './amap/types'
 import type { PlaceResult } from './amap/search'
 import { useRoutePlans, type RouteMode } from './hooks/useRoutePlans'
-import { findCity, type City } from './core/cities'
+import { useWeather } from './hooks/useWeather'
+import { findCity, DEFAULT_CITY, type City } from './core/cities'
 import { clearDraft, loadDraft, saveDraft } from './core/draft'
+import { createFavoriteStore, type SavedRoute } from './core/favorites'
+import { buildItineraryText } from './core/itinerary'
 import { MAX_POINTS, isDuplicateCoordinate, normalizePoints } from './core/points'
-import { STORAGE_KEYS, getBrowserStorage, readJson, writeJson, type StorageLike } from './core/storage'
+import { decodeShare, encodeShare } from './core/share'
+import {
+  STORAGE_KEYS,
+  createMemoryStorage,
+  getBrowserStorage,
+  readJson,
+  writeJson,
+  type StorageLike
+} from './core/storage'
 import { initialPlannerState, plannerReducer } from './state/planner'
 
 interface PendingPick {
@@ -34,10 +49,40 @@ function formatLngLat(lngLat: LngLat): string {
   return `${lngLat.lng.toFixed(4)}, ${lngLat.lat.toFixed(4)}`
 }
 
+async function copyText(text: string): Promise<boolean> {
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text)
+      return true
+    }
+  } catch {
+    // 回退到旧式复制。
+  }
+  try {
+    const area = document.createElement('textarea')
+    area.value = text
+    area.setAttribute('readonly', '')
+    area.style.position = 'fixed'
+    area.style.opacity = '0'
+    document.body.appendChild(area)
+    area.select()
+    const copied = document.execCommand('copy')
+    area.remove()
+    return copied
+  } catch {
+    return false
+  }
+}
+
 export default function App() {
   const [state, dispatch] = useReducer(plannerReducer, initialPlannerState)
-  const storage = useMemo(() => getBrowserStorage(), [])
+  const persistentStorage = useMemo(() => getBrowserStorage(), [])
+  const memoryStorage = useMemo(() => createMemoryStorage(), [])
+  const storage = persistentStorage ?? memoryStorage
+  const storagePersistent = persistentStorage !== null
+  const favoriteStore = useMemo(() => createFavoriteStore(storage), [storage])
   const [history, setHistory] = useState<string[]>(() => readHistory(storage))
+  const [savedRoutes, setSavedRoutes] = useState<SavedRoute[]>(() => favoriteStore.list())
   const [focus, setFocus] = useState<MapFocus | null>(null)
   const [mapReady, setMapReady] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
@@ -48,11 +93,17 @@ export default function App() {
   const [routeOpen, setRouteOpen] = useState(false)
   const [activeSegment, setActiveSegment] = useState(0)
   const [routeMode, setRouteMode] = useState<RouteMode>('transit')
+  const [saveOpen, setSaveOpen] = useState(false)
+  const [savedOpen, setSavedOpen] = useState(false)
+  const [deleteId, setDeleteId] = useState<number | null>(null)
+  const [manualText, setManualText] = useState<{ title: string; text: string } | null>(null)
   const [toast, setToast] = useState<string | null>(null)
   const toastTimer = useRef<number | null>(null)
   const pointsCount = useRef(0)
   const draftLoaded = useRef(false)
   const cityTouched = useRef(false)
+  const draftFailed = useRef(false)
+  const shareApplied = useRef(false)
 
   const showToast = useCallback((message: string) => {
     setToast(message)
@@ -61,11 +112,35 @@ export default function App() {
   }, [])
 
   useEffect(() => {
+    if (!storagePersistent) {
+      showToast('浏览器存储不可用，草稿和收藏只保存在本次会话')
+    }
+  }, [storagePersistent, showToast])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const search = window.location.search
+    if (!search || !new URLSearchParams(search).has('p')) return
+    const payload = decodeShare(search)
+    if (!payload) {
+      window.history.replaceState(null, '', window.location.pathname)
+      showToast('分享链接无效，已恢复本地草稿')
+      return
+    }
+    shareApplied.current = true
+    const city = payload.city ? findCity(payload.city) : null
+    dispatch({ type: 'replace-points', points: payload.points, city: city ?? undefined })
+    saveDraft(storage, payload.points, city?.name ?? DEFAULT_CITY.name)
+    window.history.replaceState(null, '', window.location.pathname)
+    showToast('已载入分享路线')
+  }, [storage, showToast])
+
+  useEffect(() => {
     pointsCount.current = state.points.length
   }, [state.points.length])
 
   useEffect(() => {
-    if (draftLoaded.current) return
+    if (draftLoaded.current || shareApplied.current) return
     draftLoaded.current = true
     const draft = loadDraft(storage)
     if (!draft) return
@@ -80,10 +155,13 @@ export default function App() {
         clearDraft(storage)
         return
       }
-      saveDraft(storage, state.points, state.city.name)
+      if (!saveDraft(storage, state.points, state.city.name) && !draftFailed.current) {
+        draftFailed.current = true
+        showToast('草稿保存失败，页面数据仍会保留')
+      }
     }, 300)
     return () => window.clearTimeout(timer)
-  }, [state.points, state.city.name, storage])
+  }, [state.points, state.city.name, storage, showToast])
 
   useEffect(() => {
     return () => {
@@ -188,6 +266,101 @@ export default function App() {
     setRouteMode('transit')
     setRouteOpen(true)
   }, [])
+
+  const weather = useWeather(state.city)
+
+  const refreshFavorites = useCallback(() => {
+    setSavedRoutes(favoriteStore.list())
+  }, [favoriteStore])
+
+  const openSavedPanel = useCallback(() => {
+    refreshFavorites()
+    setSavedOpen(true)
+  }, [refreshFavorites])
+
+  const defaultRouteName =
+    state.points.length > 0
+      ? `${state.points[0]?.title ?? ''} 等${state.points.length}站`
+      : '未命名路线'
+
+  const handleSaveRoute = useCallback(
+    (name: string) => {
+      const result = favoriteStore.add(state.points, state.city.name, name)
+      if (!result) {
+        showToast('收藏失败，请重试')
+        return
+      }
+      setSavedRoutes(favoriteStore.list())
+      setSaveOpen(false)
+      showToast(result.droppedOldest ? '已收藏，并自动删除最旧路线' : '已收藏路线')
+    },
+    [favoriteStore, state.points, state.city.name, showToast]
+  )
+
+  const loadSavedRoute = useCallback(
+    (id: number) => {
+      const saved = favoriteStore.getById(id)
+      if (!saved) {
+        refreshFavorites()
+        showToast('收藏不存在')
+        return
+      }
+      const points = normalizePoints(saved.points, MAX_POINTS)
+      if (points.length === 0) {
+        showToast('收藏数据无效')
+        return
+      }
+      const city = saved.city ? findCity(saved.city) : null
+      dispatch({ type: 'replace-points', points, city: city ?? undefined })
+      setSavedOpen(false)
+      setRouteOpen(false)
+      setPickMode(false)
+      const last = points[points.length - 1]
+      if (last) setFocus({ lng: last.lng, lat: last.lat, zoom: 14, nonce: Date.now() })
+      showToast('已加载收藏')
+    },
+    [favoriteStore, refreshFavorites, showToast]
+  )
+
+  const confirmDeleteSaved = useCallback(() => {
+    if (deleteId === null) return
+    const removed = favoriteStore.remove(deleteId)
+    setDeleteId(null)
+    if (!removed) {
+      showToast('删除失败，请重试')
+      return
+    }
+    refreshFavorites()
+    showToast('已删除收藏')
+  }, [deleteId, favoriteStore, refreshFavorites, showToast])
+
+  const shareRoute = useCallback(async () => {
+    const search = encodeShare(state.points, state.city.name)
+    if (!search) {
+      showToast('路线太长，无法生成分享链接')
+      return
+    }
+    const url = `${window.location.origin}${window.location.pathname}?${search}`
+    window.history.replaceState(null, '', url)
+    const copied = await copyText(url)
+    if (copied) {
+      showToast('分享链接已复制')
+    } else {
+      setManualText({ title: '手动复制分享链接', text: url })
+      showToast('复制失败，已打开手动复制')
+    }
+  }, [state.points, state.city.name, showToast])
+
+  const copyItinerary = useCallback(async () => {
+    const text = buildItineraryText(state.points, state.city.name)
+    const copied = await copyText(text)
+    if (copied) {
+      showToast('行程已复制')
+    } else {
+      setManualText({ title: '手动复制行程', text })
+      showToast('复制失败，已打开手动复制')
+    }
+  }, [state.points, state.city.name, showToast])
 
   useEffect(() => {
     if (!hasAmapKey() || pointsCount.current > 0) return
@@ -298,6 +471,23 @@ export default function App() {
               {state.points.length === 1 && <p className="inline-hint">至少 2 个点才能规划路线</p>}
             </section>
 
+            {state.points.length > 0 && (
+              <div className="secondary-actions">
+                <button type="button" className="btn" onClick={() => setSaveOpen(true)}>
+                  ⭐ 收藏路线
+                </button>
+                <button type="button" className="btn" onClick={openSavedPanel}>
+                  收藏 ({savedRoutes.length})
+                </button>
+                <button type="button" className="btn" onClick={() => void shareRoute()}>
+                  分享链接
+                </button>
+                <button type="button" className="btn" onClick={() => void copyItinerary()}>
+                  复制行程
+                </button>
+              </div>
+            )}
+
             {state.points.length >= 2 && (
               <button
                 type="button"
@@ -322,6 +512,9 @@ export default function App() {
           onReady={() => setMapReady(true)}
           onError={() => setMapReady(false)}
         />
+        <div className="weather-float">
+          <WeatherCard city={state.city} state={weather} onRetry={weather.retry} />
+        </div>
       </main>
 
       <SearchOverlay
@@ -357,6 +550,37 @@ export default function App() {
         confirmText="清空"
         onConfirm={clearPoints}
         onCancel={() => setClearOpen(false)}
+      />
+
+      <SaveRouteDialog
+        open={saveOpen}
+        defaultName={defaultRouteName}
+        onCancel={() => setSaveOpen(false)}
+        onSave={handleSaveRoute}
+      />
+
+      <SavedPanel
+        open={savedOpen}
+        routes={savedRoutes}
+        onClose={() => setSavedOpen(false)}
+        onLoad={loadSavedRoute}
+        onDelete={setDeleteId}
+      />
+
+      <ConfirmDialog
+        open={deleteId !== null}
+        title="删除收藏？"
+        message="这条收藏将从本机删除。"
+        confirmText="删除"
+        onConfirm={confirmDeleteSaved}
+        onCancel={() => setDeleteId(null)}
+      />
+
+      <TextDialog
+        open={manualText !== null}
+        title={manualText?.title ?? ''}
+        text={manualText?.text ?? ''}
+        onClose={() => setManualText(null)}
       />
 
       <Toast message={toast} />
