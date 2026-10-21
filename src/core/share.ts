@@ -3,6 +3,7 @@ import { MAX_POINTS, isValidCoordinate, normalizePoints, type Point } from './po
 
 export const MAX_SHARE_LENGTH = 2200
 const MAX_SHARE_TITLE = 8
+const SHORT_SHARE_TITLE = 4
 
 export interface SharePayload {
   points: Point[]
@@ -13,19 +14,25 @@ function roundCoordinate(value: number): number {
   return Math.round(value * 1e5) / 1e5
 }
 
-export function encodeShare(points: readonly Point[], city: string): string | null {
-  if (points.length === 0 || points.length > MAX_POINTS) return null
-  const rows: [string, number, number][] = []
-  for (const point of points) {
-    if (!isValidCoordinate(point.lat, point.lng)) return null
-    rows.push([point.title.slice(0, MAX_SHARE_TITLE), roundCoordinate(point.lat), roundCoordinate(point.lng)])
-  }
-
+function buildShare(points: readonly Point[], city: string, titleLimit: number): string | null {
+  const rows: [string, number, number][] = points.map((point) => [
+    point.title.slice(0, titleLimit),
+    roundCoordinate(point.lat),
+    roundCoordinate(point.lng)
+  ])
   const params = new URLSearchParams()
   params.set('p', JSON.stringify(rows))
   params.set('c', city)
   const search = params.toString()
   return search.length < MAX_SHARE_LENGTH ? search : null
+}
+
+export function encodeShare(points: readonly Point[], city: string): string | null {
+  if (points.length === 0 || points.length > MAX_POINTS) return null
+  for (const point of points) {
+    if (!isValidCoordinate(point.lat, point.lng)) return null
+  }
+  return buildShare(points, city, MAX_SHARE_TITLE) ?? buildShare(points, city, SHORT_SHARE_TITLE)
 }
 
 export function decodeShare(search: string): SharePayload | null {

@@ -17,6 +17,7 @@ export interface MapHandle {
   fitPolylines(): void
   focus(target: MapFocus): void
   onPick(handler: (lngLat: LngLat) => void): () => void
+  onMarkerClick(handler: (index: number) => void): () => void
   destroy(): void
 }
 
@@ -52,6 +53,7 @@ export function createMap(amap: AmapNamespace, container: HTMLElement): MapHandl
   let markers: AmapOverlay[] = []
   let polylineOverlays: AmapOverlay[] = []
   const pickHandlers = new Set<(lngLat: LngLat) => void>()
+  const markerHandlers = new Set<(index: number) => void>()
   const clickHandler = (event: unknown) => {
     const lngLat = readClickEvent(event)
     if (!lngLat) return
@@ -69,6 +71,9 @@ export function createMap(amap: AmapNamespace, container: HTMLElement): MapHandl
         anchor: 'center',
         zIndex: 100 + index,
         title: point.title
+      })
+      marker.on?.('click', () => {
+        for (const handler of markerHandlers) handler(index)
       })
       markers.push(marker)
     })
@@ -120,13 +125,29 @@ export function createMap(amap: AmapNamespace, container: HTMLElement): MapHandl
     return () => pickHandlers.delete(handler)
   }
 
+  function onMarkerClick(handler: (index: number) => void): () => void {
+    markerHandlers.add(handler)
+    return () => markerHandlers.delete(handler)
+  }
+
   function destroy(): void {
     map.off('click', clickHandler)
     pickHandlers.clear()
+    markerHandlers.clear()
     markers = []
     polylineOverlays = []
     map.destroy()
   }
 
-  return { map, renderMarkers, renderPolylines, fitPoints, fitPolylines, focus, onPick, destroy }
+  return {
+    map,
+    renderMarkers,
+    renderPolylines,
+    fitPoints,
+    fitPolylines,
+    focus,
+    onPick,
+    onMarkerClick,
+    destroy
+  }
 }

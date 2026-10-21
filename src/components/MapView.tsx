@@ -12,6 +12,7 @@ interface MapViewProps {
   pickMode: boolean
   focus: MapFocus | null
   onPick: (lngLat: LngLat) => void
+  onMarkerClick?: (index: number) => void
   onReady?: () => void
   onError?: () => void
 }
@@ -22,6 +23,7 @@ export default function MapView({
   pickMode,
   focus,
   onPick,
+  onMarkerClick,
   onReady,
   onError
 }: MapViewProps) {
@@ -32,6 +34,7 @@ export default function MapView({
   const focusRef = useRef(focus)
   const pickModeRef = useRef(pickMode)
   const onPickRef = useRef(onPick)
+  const onMarkerClickRef = useRef(onMarkerClick)
   const onReadyRef = useRef(onReady)
   const onErrorRef = useRef(onError)
   const pointSetKey = useRef('')
@@ -46,6 +49,10 @@ export default function MapView({
   useEffect(() => {
     onPickRef.current = onPick
   }, [onPick])
+
+  useEffect(() => {
+    onMarkerClickRef.current = onMarkerClick
+  }, [onMarkerClick])
 
   useEffect(() => {
     onReadyRef.current = onReady
@@ -95,6 +102,7 @@ export default function MapView({
         handle.onPick((lngLat) => {
           if (pickModeRef.current) onPickRef.current(lngLat)
         })
+        handle.onMarkerClick((index) => onMarkerClickRef.current?.(index))
         handle.renderMarkers(pointsRef.current)
         handle.renderPolylines(polylinesRef.current)
         if (polylinesRef.current.length > 0) handle.fitPolylines()

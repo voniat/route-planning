@@ -1,8 +1,9 @@
-import { useRef, useState, type KeyboardEvent, type PointerEvent } from 'react'
+import { useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react'
 import type { Point } from '../core/points'
 
 interface PointListProps {
   points: Point[]
+  selectedId?: string | null
   onRemove: (id: string) => void
   onMove: (from: number, to: number) => void
 }
@@ -15,12 +16,21 @@ interface DragState {
   handle: HTMLButtonElement
 }
 
-export default function PointList({ points, onRemove, onMove }: PointListProps) {
+export default function PointList({ points, selectedId, onRemove, onMove }: PointListProps) {
   const pointsRef = useRef(points)
   pointsRef.current = points
   const dragRef = useRef<DragState | null>(null)
+  const listRef = useRef<HTMLOListElement>(null)
   const [draggingId, setDraggingId] = useState<string | null>(null)
   const [announcement, setAnnouncement] = useState('')
+
+  useEffect(() => {
+    if (!selectedId) return
+    const rows = listRef.current?.querySelectorAll<HTMLElement>('[data-point-id]')
+    if (!rows) return
+    const row = Array.from(rows).find((item) => item.dataset.pointId === selectedId)
+    row?.scrollIntoView({ block: 'nearest' })
+  }, [selectedId])
 
   function move(from: number, to: number): void {
     if (to < 0 || to >= pointsRef.current.length || from === to) return
@@ -84,12 +94,23 @@ export default function PointList({ points, onRemove, onMove }: PointListProps) 
 
   return (
     <div className="point-list-wrap">
-      <ol className="point-list" aria-label="途经点顺序">
+      <ol ref={listRef} className="point-list" aria-label="途经点顺序">
         {points.map((point, index) => {
           const isStart = index === 0
           const isEnd = index === points.length - 1
           return (
-            <li key={point.id} className={draggingId === point.id ? 'point-row dragging' : 'point-row'}>
+            <li
+              key={point.id}
+              data-point-id={point.id}
+              aria-current={selectedId === point.id ? 'true' : undefined}
+              className={
+                draggingId === point.id
+                  ? 'point-row dragging'
+                  : selectedId === point.id
+                    ? 'point-row selected'
+                    : 'point-row'
+              }
+            >
               <button
                 type="button"
                 className="drag-handle"

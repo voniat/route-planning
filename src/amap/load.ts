@@ -14,16 +14,25 @@ const PLUGINS = [
 
 let loading: Promise<AmapNamespace> | null = null
 
+function readEnvValue(value: string | undefined): string {
+  const trimmed = (value ?? '').trim()
+  if (!trimmed || /^(?:your|replace)-/i.test(trimmed)) return ''
+  return trimmed
+}
+
 export function hasAmapKey(): boolean {
-  return Boolean(import.meta.env.VITE_AMAP_KEY && import.meta.env.VITE_AMAP_SECURITY_CODE)
+  return Boolean(
+    readEnvValue(import.meta.env.VITE_AMAP_KEY) &&
+      readEnvValue(import.meta.env.VITE_AMAP_SECURITY_CODE)
+  )
 }
 
 export function loadAmap(): Promise<AmapNamespace> {
   if (typeof window !== 'undefined' && window.AMap) return Promise.resolve(window.AMap)
   if (loading) return loading
 
-  const key = import.meta.env.VITE_AMAP_KEY
-  const securityCode = import.meta.env.VITE_AMAP_SECURITY_CODE
+  const key = readEnvValue(import.meta.env.VITE_AMAP_KEY)
+  const securityCode = readEnvValue(import.meta.env.VITE_AMAP_SECURITY_CODE)
   if (!key || !securityCode) {
     return Promise.reject(
       new AppError(

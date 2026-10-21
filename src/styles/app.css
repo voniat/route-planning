@@ -220,6 +220,12 @@ code {
   box-shadow: var(--shadow-card);
 }
 
+.point-row.selected {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 1px;
+  background: #fff;
+}
+
 .drag-handle {
   border: 0;
   background: transparent;

@@ -51,7 +51,7 @@ export default function RoutePanel({
         <h2>交通路线</h2>
       </div>
 
-      <div className="segment-tabs" role="tablist" aria-label="路段">
+      <div className="segment-tabs" role="group" aria-label="路段">
         {points.slice(0, -1).map((point, index) => {
           const destination = points[index + 1]
           if (!destination) return null
@@ -59,8 +59,7 @@ export default function RoutePanel({
             <button
               key={`${point.id}-${destination.id}`}
               type="button"
-              role="tab"
-              aria-selected={index === activeSegment}
+              aria-pressed={index === activeSegment}
               className={index === activeSegment ? 'segment-tab active' : 'segment-tab'}
               onClick={() => onSegmentChange(index)}
             >
@@ -70,11 +69,10 @@ export default function RoutePanel({
         })}
       </div>
 
-      <div className="mode-tabs" role="tablist" aria-label="出行方式">
+      <div className="mode-tabs" role="group" aria-label="出行方式">
         <button
           type="button"
-          role="tab"
-          aria-selected={mode === 'transit'}
+          aria-pressed={mode === 'transit'}
           className={mode === 'transit' ? 'mode-tab active' : 'mode-tab'}
           onClick={() => onModeChange('transit')}
         >
@@ -82,8 +80,7 @@ export default function RoutePanel({
         </button>
         <button
           type="button"
-          role="tab"
-          aria-selected={mode === 'walking'}
+          aria-pressed={mode === 'walking'}
           className={mode === 'walking' ? 'mode-tab active' : 'mode-tab'}
           onClick={() => onModeChange('walking')}
         >
@@ -109,13 +106,12 @@ export default function RoutePanel({
       {state.status === 'ready' && mode === 'transit' && plan && (
         <>
           {state.plans.length > 1 && (
-            <div className="plan-tabs" role="tablist" aria-label="公交方案">
+            <div className="plan-tabs" role="group" aria-label="公交方案">
               {state.plans.map((item, index) => (
                 <button
                   key={item.id}
                   type="button"
-                  role="tab"
-                  aria-selected={index === state.planIndex}
+                  aria-pressed={index === state.planIndex}
                   className={index === state.planIndex ? 'plan-tab active' : 'plan-tab'}
                   onClick={() => onSelectPlan(index)}
                 >

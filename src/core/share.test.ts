@@ -51,6 +51,21 @@ describe('share codec', () => {
     expect((search ?? '').length).toBeLessThan(2200)
   })
 
+  it('falls back to shorter titles when long titles exceed the limit', () => {
+    const points = normalizePoints(
+      Array.from({ length: 20 }, (_, index) => ({
+        title: `北京天安门广场东侧${index}`,
+        lat: 39.90812 + index / 1000000,
+        lng: 116.39745 + index / 1000000
+      }))
+    )
+    const search = encodeShare(points, '北京')
+    expect(search).not.toBeNull()
+    const decoded = decodeShare(search ?? '')
+    expect(decoded?.points).toHaveLength(20)
+    expect(decoded?.points[0]?.title.length).toBeLessThanOrEqual(4)
+  })
+
   it('rejects malformed, invalid-coordinate and unknown-city payloads', () => {
     expect(decodeShare('')).toBeNull()
     expect(decodeShare('p=%7B')).toBeNull()

@@ -96,6 +96,7 @@ export default function App() {
   const [saveOpen, setSaveOpen] = useState(false)
   const [savedOpen, setSavedOpen] = useState(false)
   const [deleteId, setDeleteId] = useState<number | null>(null)
+  const [selectedPointId, setSelectedPointId] = useState<string | null>(null)
   const [manualText, setManualText] = useState<{ title: string; text: string } | null>(null)
   const [toast, setToast] = useState<string | null>(null)
   const toastTimer = useRef<number | null>(null)
@@ -138,6 +139,12 @@ export default function App() {
   useEffect(() => {
     pointsCount.current = state.points.length
   }, [state.points.length])
+
+  useEffect(() => {
+    if (selectedPointId && !state.points.some((point) => point.id === selectedPointId)) {
+      setSelectedPointId(null)
+    }
+  }, [state.points, selectedPointId])
 
   useEffect(() => {
     if (draftLoaded.current || shareApplied.current) return
@@ -267,6 +274,16 @@ export default function App() {
     setRouteOpen(true)
   }, [])
 
+  const handleMarkerClick = useCallback(
+    (index: number) => {
+      const point = state.points[index]
+      if (!point) return
+      if (routeOpen) setRouteOpen(false)
+      setSelectedPointId(point.id)
+    },
+    [state.points, routeOpen]
+  )
+
   const weather = useWeather(state.city)
 
   const refreshFavorites = useCallback(() => {
@@ -341,7 +358,6 @@ export default function App() {
       return
     }
     const url = `${window.location.origin}${window.location.pathname}?${search}`
-    window.history.replaceState(null, '', url)
     const copied = await copyText(url)
     if (copied) {
       showToast('分享链接已复制')
@@ -460,6 +476,7 @@ export default function App() {
                 <>
                   <PointList
                     points={state.points}
+                    selectedId={selectedPointId}
                     onRemove={removePoint}
                     onMove={(from, to) => dispatch({ type: 'move-point', from, to })}
                   />
@@ -509,6 +526,7 @@ export default function App() {
           pickMode={pickMode}
           focus={focus}
           onPick={handlePick}
+          onMarkerClick={handleMarkerClick}
           onReady={() => setMapReady(true)}
           onError={() => setMapReady(false)}
         />
