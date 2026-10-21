@@ -6,6 +6,7 @@ import {
 } from 'react'
 import type { City } from '../core/cities'
 import type { WeatherState } from '../hooks/useWeather'
+import weatherWidget from '../assets/weather-widget.png'
 
 interface WeatherCardProps {
   city: City
@@ -42,6 +43,15 @@ export default function WeatherCard({ city, state, onRetry }: WeatherCardProps) 
   const dragRef = useRef<BubbleDrag | null>(null)
   const suppressClick = useRef(false)
   const current = state.data?.current
+  const useWeatherArt =
+    isMobile &&
+    Boolean(
+      current &&
+        (current.text.includes('晴') ||
+          current.text.includes('多云') ||
+          current.icon === '⛅' ||
+          current.icon === '🌤️')
+    )
 
   useEffect(() => {
     const media = window.matchMedia(MOBILE_QUERY)
@@ -152,7 +162,11 @@ export default function WeatherCard({ city, state, onRetry }: WeatherCardProps) 
         }}
         onClick={handleBubbleClick}
       >
-        <span aria-hidden="true">{current?.icon ?? '☁️'}</span>
+        {useWeatherArt ? (
+          <img className="weather-art weather-bubble-art" src={weatherWidget} alt="" aria-hidden="true" />
+        ) : (
+          <span aria-hidden="true">{current?.icon ?? '☁️'}</span>
+        )}
       </button>
     )
   }
@@ -181,9 +195,15 @@ export default function WeatherCard({ city, state, onRetry }: WeatherCardProps) 
   return (
     <section className="weather-card" aria-label="天气">
       <div className="weather-current">
-        <span className="weather-icon" aria-hidden="true">
-          {data.current.icon}
-        </span>
+        {useWeatherArt ? (
+          <span className="weather-art-badge" aria-hidden="true">
+            <img className="weather-art weather-card-art" src={weatherWidget} alt="" />
+          </span>
+        ) : (
+          <span className="weather-icon" aria-hidden="true">
+            {data.current.icon}
+          </span>
+        )}
         <span className="weather-main">
           <span className="weather-temp">{data.current.temperature}°</span>
           <span className="weather-desc">
